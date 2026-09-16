@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>협의회 음료 주문 시스템</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Phosphor Icons (아이콘 라이브러리) -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <style>
+    @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+    body {
+      font-family: 'Pretendard', sans-serif;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      height: 6px;
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background-color: #cbd5e1;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+
+  <!-- 토스트 알림창 -->
+  <div id="toast" class="fixed top-5 right-5 z-50 transform transition-all duration-300 translate-y-[-150%] opacity-0 pointer-events-none">
+    <div id="toastContent" class="flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-white font-medium text-sm">
+      <i id="toastIcon" class="ph-bold ph-check-circle text-lg"></i>
+      <span id="toastMessage">알림 내용</span>
+    </div>
+  </div>
+
+  <div class="max-w-6xl mx-auto px-4 py-6 md:py-8 space-y-6">
+
+    <!-- 상단 헤더 -->
+    <header class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-slate-200 pb-5">
+      <div>
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-semibold mb-2">
+          <i class="ph-bold ph-coffee"></i> 협의회 회의 준비
+        </div>
+        <h1 class="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">카페 음료 주문 현황판</h1>
+      </div>
+      <div class="flex items-center gap-3 self-start md:self-auto">
+        <span class="inline-flex items-center gap-1.5 text-xs text-slate-500 bg-white border border-slate-200 px-3 py-1.5 rounded-full shadow-sm">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          5초 주기 자동 갱신 중
+        </span>
+        <button onclick="fetchOrders(true)" class="p-2 text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition shadow-sm" title="즉시 새로고침">
+          <i class="ph-bold ph-arrows-clockwise text-base" id="refreshIcon"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- 대시보드 통계 카드 -->
+    <section class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm flex items-center gap-4">
+        <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-2xl font-bold">
+          <i class="ph-bold ph-users"></i>
+        </div>
+        <div>
+          <p class="text-xs font-medium text-slate-400">총 참여 인원</p>
+          <p class="text-xl font-bold text-slate-800" id="statCount">0명</p>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm flex items-center gap-4">
+        <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-2xl font-bold">
+          <i class="ph-bold ph-receipt"></i>
+        </div>
+        <div>
+          <p class="text-xs font-medium text-slate-400">총 결제 예상 금액</p>
+          <p class="text-xl font-bold text-slate-800" id="statAmount">0원</p>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm flex items-center gap-4">
+        <div class="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center text-2xl font-bold">
+          <i class="ph-bold ph-fire"></i>
+        </div>
+        <div>
+          <p class="text-xs font-medium text-slate-400">최다 인기 메뉴</p>
+          <p class="text-xl font-bold text-slate-800 truncate max-w-[180px]" id="statTopMenu">-</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 메인 컨텐츠 영역 -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+      <!-- 주문 폼 영역 (7칸) -->
+      <div class="lg:col-span-7 space-y-4">
+        <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 md:p-6">
+          <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+            <div>
+              <h2 class="text-lg font-bold text-slate-900" id="formModeTitle">음료 선택 및 등록</h2>
+              <p class="text-xs text-slate-500 mt-0.5">이름을 입력하고 원하시는 메뉴를 클릭해 주문을 접수해주세요.</p>
+            </div>
+            <button id="cancelEditBtn" onclick="resetFormState()" class="hidden text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2.5 py-1.5 rounded-lg transition font-medium">
+              수정 취소
+            </button>
+          </div>
+
+          <form id="orderForm" onsubmit="handleOrderSubmit(event)" class="space-y-5 mt-4">
+            <!-- 참석자 이름 -->
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1.5" for="attendeeName">
+                참석자 이름 <span class="text-rose-500">*</span>
+              </label>
+              <div class="relative">
+                <input 
+                  type="text" 
+                  id="attendeeName" 
+                  required 
+                  placeholder="예: 홍길동" 
+                  class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none text-sm transition"
+                />
+                <i class="ph-bold ph-user absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+              </div>
+            </div>
+
+            <!-- 메뉴 카테고리 탭 -->
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-2">카테고리</label>
+              <div class="flex items-center gap-1.5 overflow-x-auto pb-2 custom-scrollbar" id="categoryTabs">
+                <!-- 탭 버튼이 JS로 동적 렌더링됩니다 -->
+              </div>
+            </div>
+
+            <!-- 메뉴 선택 카드 목록 -->
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <label class="text-xs font-semibold text-slate-600">메뉴 선택</label>
+                <span class="text-[11px] text-amber-600 font-medium">* 샷/시럽 추가는 현장 요청</span>
+              </div>
+              <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-[300px] overflow-y-auto p-1 custom-scrollbar" id="menuGrid">
+                <!-- 메뉴 카드가 JS로 렌더링됩니다 -->
+              </div>
+            </div>
+
+            <!-- 선택 요약 표시 -->
+            <div class="p-3.5 bg-slate-50 border border-slate-200/80 rounded-xl flex items-center justify-between">
+              <div>
+                <span class="text-[11px] text-slate-400 block font-medium">선택된 메뉴</span>
+                <span class="text-sm font-bold text-slate-800" id="selectedMenuNameDisplay">선택 없음</span>
+              </div>
+              <div class="text-right">
+                <span class="text-[11px] text-slate-400 block font-medium">결제 금액</span>
+                <span class="text-base font-bold text-amber-600" id="selectedMenuPriceDisplay">0원</span>
+              </div>
+            </div>
+
+            <!-- 제출 버튼 -->
+            <button 
+              type="submit" 
+              id="submitBtn" 
+              class="w-full py-3.5 bg-amber-500 hover:bg-amber-600 active:scale-[0.99] text-white font-semibold rounded-xl shadow-sm transition flex items-center justify-center gap-2"
+            >
+              <i class="ph-bold ph-paper-plane-tilt" id="submitBtnIcon"></i>
+              <span id="submitBtnText">주문 등록하기</span>
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- 실시간 주문 내역 목록 (5칸) -->
+      <div class="lg:col-span-5">
+        <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 md:p-6 flex flex-col h-full min-h-[500px]">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
+            <h2 class="text-lg font-bold text-slate-900">주문 접수 명단</h2>
+            <span class="text-xs font-semibold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full" id="orderListCountBadge">0건</span>
+          </div>
+
+          <div class="flex-1 overflow-y-auto space-y-2.5 custom-scrollbar pr-1" id="orderListContainer">
+            <!-- 주문 항목이 JS로 렌더링됩니다 -->
+            <div class="py-12 text-center text-slate-400 text-sm">
+              <i class="ph-bold ph-spinner animate-spin text-2xl mb-2 text-amber-500"></i>
+              <p>주문 내역을 불러오는 중...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // -------------------------------------------------------------
+    // 1. 첨부 이미지 기반 카페 메뉴 데이터
+    // -------------------------------------------------------------
+    const MENU_DATA = {
+      "COFFEE": [
+        { name: "에스프레소", price: 4500 },
+        { name: "아메리카노", price: 4500 },
+        { name: "카페 라떼", price: 5000 },
+        { name: "헤이즐넛 라떼", price: 5500 },
+        { name: "바닐라 라떼", price: 5500 },
+        { name: "돌체 라떼", price: 5500 },
+        { name: "아인슈페너", price: 6000 },
+        { name: "아샷추 (복숭아)", price: 5500 },
+        { name: "아샷추 (레몬)", price: 5500 },
+        { name: "카라멜 라떼", price: 5500 },
+        { name: "브루잉 커피 (드립)", price: 6000 }
+      ],
+      "TEA": [
+        { name: "히비스커스 유자차", price: 7000 },
+        { name: "페퍼민트", price: 6500 },
+        { name: "히비스커스", price: 6500 },
+        { name: "캐모마일", price: 6500 },
+        { name: "루이보스", price: 6500 },
+        { name: "레몬차", price: 6500 },
+        { name: "자몽차", price: 6500 },
+        { name: "아이스티 (복숭아)", price: 5000 },
+        { name: "아이스티 (레몬)", price: 5000 }
+      ],
+      "LATTE": [
+        { name: "초코 라떼", price: 6000 },
+        { name: "말차 라떼", price: 6000 },
+        { name: "딸기 라떼", price: 7000 },
+        { name: "딸기 말차 라떼", price: 7500 }
+      ],
+      "SMOOTHIE": [
+        { name: "말차 스무디", price: 7500 },
+        { name: "블루베리 요거트 스무디", price: 7500 },
+        { name: "딸기 요거트 스무디", price: 7500 },
+        { name: "망고 요거트 스무디", price: 7500 },
+        { name: "청포도 요거트 스무디", price: 7500 }
+      ],
+      "ADE": [
+        { name: "레몬 에이드", price: 7000 },
+        { name: "자몽 에이드", price: 7000 },
+        { name: "청포도 에이드", price: 7000 },
+        { name: "히비스커스 유자 에이드", price: 7000 },
+        { name: "오몽 에이드 (오렌지+자몽)", price: 7000 }
+      ],
+      "ICE CREAM": [
+        { name: "아이스크림 (초코)", price: 5000 },
+        { name: "아이스크림 (딸기)", price: 5000 },
+        { name: "아이스크림 (바닐라)", price: 5000 },
+        { name: "아이스크림 (리코타치즈)", price: 5000 },
+        { name: "아이스크림 (망고)", price: 5000 }
+      ],
+      "SEASON MENU": [
+        { name: "생강차", price: 7000 }
+      ],
+      "JUICE": [
+        { name: "애플주스", price: 4300 },
+        { name: "애플스파클링", price: 4000 },
+        { name: "상하목장 유기농 주스", price: 1500 }
+      ]
+    };
+
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwbVevHhaS2EEhWMjtrLXr0kLWtddGpOTygWZvT5zpt_1JDDec9BNVzw3OTQGtuI9sb/exec";
+
+    // -------------------------------------------------------------
+    // 2. 상태(State) 관리
+    // -------------------------------------------------------------
+    let currentCategory = "COFFEE";
+    let selectedMenu = null; // { name, price }
+    let orderList = [];
+    let isEditing = false;
+    let isSubmitting = false;
+
+    // -------------------------------------------------------------
+    // 3. UI 렌더링 함수들
+    // -------------------------------------------------------------
+    function initCategoryTabs() {
+      const tabsContainer = document.getElementById("categoryTabs");
+      tabsContainer.innerHTML = "";
+
+      Object.keys(MENU_DATA).forEach((cat) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        const isActive = cat === currentCategory;
+        btn.className = `px-3.5 py-1.5 text-xs font-semibold rounded-lg whitespace-nowrap transition-all ${
+          isActive 
+            ? "bg-slate-900 text-white shadow-sm" 
+            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+        }`;
+        btn.innerText = cat;
+        btn.onclick = () => {
+          currentCategory = cat;
+          initCategoryTabs();
+          renderMenuItems();
+        };
+        tabsContainer.appendChild(btn);
+      });
+    }
+
+    function renderMenuItems() {
+      const grid = document.getElementById("menuGrid");
+      grid.innerHTML = "";
+      const items = MENU_DATA[currentCategory] || [];
+
+      items.forEach((item) => {
+        const isSelected = selectedMenu && selectedMenu.name === item.name;
+        const card = document.createElement("button");
+        card.type = "button";
+        card.className = `p-3 rounded-xl text-left border transition-all flex flex-col justify-between ${
+          isSelected
+            ? "border-amber-500 bg-amber-50/60 ring-2 ring-amber-400"
+            : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/80"
+        }`;
+
+        card.innerHTML = `
+          <div class="text-xs font-bold text-slate-800 line-clamp-2">${item.name}</div>
+          <div class="text-xs font-semibold text-amber-600 mt-2">${item.price.toLocaleString()}원</div>
+        `;
+
+        card.onclick = () => {
+          selectedMenu = item;
+          document.getElementById("selectedMenuNameDisplay").innerText = item.name;
+          document.getElementById("selectedMenuPriceDisplay").innerText = `${item.price.toLocaleString()}원`;
+          renderMenuItems(); // 선택 하이라이트 갱신
+        };
+
+        grid.appendChild(card);
+      });
+    }
+
+    function renderOrderList() {
+      const container = document.getElementById("orderListContainer");
+      document.getElementById("orderListCountBadge").innerText = `${orderList.length}건`;
+
+      if (orderList.length === 0) {
+        container.innerHTML = `
+          <div class="py-16 text-center text-slate-400 text-sm">
+            <i class="ph-bold ph-tray text-3xl mb-1 text-slate-300"></i>
+            <p>아직 등록된 주문이 없습니다.</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = "";
+      orderList.forEach((order) => {
+        const div = document.createElement("div");
+        div.className = "p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/50 hover:bg-slate-50 transition flex items-center justify-between";
+
+        div.innerHTML = `
+          <div class="min-w-0 pr-3">
+            <div class="flex items-center gap-2 mb-0.5">
+              <span class="font-bold text-slate-900 text-sm">${escapeHtml(order.name)}</span>
+              <span class="text-xs text-amber-600 font-semibold">${Number(order.price).toLocaleString()}원</span>
+            </div>
+            <p class="text-xs text-slate-500 truncate">${escapeHtml(order.menu)}</p>
+          </div>
+          <button 
+            type="button" 
+            onclick="startEditOrder('${escapeQuotes(order.name)}', '${escapeQuotes(order.menu)}', ${order.price})"
+            class="shrink-0 px-2.5 py-1 text-xs font-medium text-amber-700 bg-amber-100/70 hover:bg-amber-200 rounded-lg transition"
+          >
+            수정
+          </button>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function updateStatistics() {
+      const count = orderList.length;
+      const total = orderList.reduce((acc, cur) => acc + (Number(cur.price) || 0), 0);
+
+      document.getElementById("statCount").innerText = `${count}명`;
+      document.getElementById("statAmount").innerText = `${total.toLocaleString()}원`;
+
+      if (count === 0) {
+        document.getElementById("statTopMenu").innerText = "-";
+        return;
+      }
+
+      const freqMap = {};
+      orderList.forEach(item => {
+        freqMap[item.menu] = (freqMap[item.menu] || 0) + 1;
+      });
+
+      let topMenu = "-";
+      let maxCnt = 0;
+      for (const [menu, cnt] of Object.entries(freqMap)) {
+        if (cnt > maxCnt) {
+          maxCnt = cnt;
+          topMenu = menu;
+        }
+      }
+      document.getElementById("statTopMenu").innerText = `${topMenu} (${maxCnt}잔)`;
+    }
+
+    // -------------------------------------------------------------
+    // 4. API 통신 로직 (GET / POST)
+    // -------------------------------------------------------------
+    async function fetchOrders(showSpinner = false) {
+      const refreshIcon = document.getElementById("refreshIcon");
+      if (showSpinner && refreshIcon) refreshIcon.classList.add("animate-spin");
+
+      try {
+        const response = await fetch(SCRIPT_URL, {
+          method: "GET",
+          cache: "no-store"
+        });
+
+        if (!response.ok) throw new Error("네트워크 응답 이상");
+
+        const data = await response.json();
+        // data 형식 처리: 시트의 [이름, 메뉴, 가격] 2차원 배열 또는 객체 배열 처리
+        if (Array.isArray(data)) {
+          orderList = data.map(item => {
+            if (Array.isArray(item)) {
+              return { name: item[0], menu: item[1], price: Number(item[2]) || 0 };
+            }
+            return {
+              name: item.name || item.이름 || "",
+              menu: item.menu || item.메뉴 || "",
+              price: Number(item.price || item.가격) || 0
+            };
+          }).filter(row => row.name && row.name !== "이름"); // 헤더 행 제외
+
+          renderOrderList();
+          updateStatistics();
+        }
+      } catch (err) {
+        console.warn("데이터 갱신 오류:", err);
+      } finally {
+        if (refreshIcon) refreshIcon.classList.remove("animate-spin");
+      }
+    }
+
+    async function handleOrderSubmit(e) {
+      e.preventDefault();
+      if (isSubmitting) return;
+
+      const nameInput = document.getElementById("attendeeName");
+      const name = nameInput.value.trim();
+
+      if (!name) {
+        showToast("참석자 이름을 입력해주세요.", "error");
+        nameInput.focus();
+        return;
+      }
+
+      if (!selectedMenu) {
+        showToast("음료 메뉴를 선택해주세요.", "error");
+        return;
+      }
+
+      const payload = {
+        name: name,
+        menu: selectedMenu.name,
+        price: selectedMenu.price
+      };
+
+      setSubmittingState(true);
+
+      try {
+        // Apps Script 웹 앱 POST 요청 (CORS 리다이렉션 고려 text/plain 형식 전송)
+        await fetch(SCRIPT_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify(payload)
+        });
+
+        showToast(isEditing ? "주문 내역이 수정되었습니다." : "주문이 정상 접수되었습니다.", "success");
+        
+        // 로컬 목록 즉각 반영 (UX 반응성 향상)
+        const existingIdx = orderList.findIndex(item => item.name === payload.name);
+        if (existingIdx !== -1) {
+          orderList[existingIdx] = payload;
+        } else {
+          orderList.push(payload);
+        }
+        renderOrderList();
+        updateStatistics();
+
+        resetFormState();
+        fetchOrders(); // 서버 최신 상태 동기화
+      } catch (err) {
+        console.error(err);
+        showToast("주문 처리 중 오류가 발생했습니다.", "error");
+      } finally {
+        setSubmittingState(false);
+      }
+    }
+
+    // -------------------------------------------------------------
+    // 5. 수정 및 폼 상태 컨트롤
+    // -------------------------------------------------------------
+    function startEditOrder(name, menuName, price) {
+      isEditing = true;
+      document.getElementById("formModeTitle").innerText = "주문 내역 변경";
+      document.getElementById("cancelEditBtn").classList.remove("hidden");
+      document.getElementById("submitBtnText").innerText = "수정 완료하기";
+      
+      const nameInput = document.getElementById("attendeeName");
+      nameInput.value = name;
+      nameInput.readOnly = true; // 본인 이름 고정
+
+      // 메뉴 탐색 및 선택 처리
+      let found = false;
+      for (const [cat, items] of Object.entries(MENU_DATA)) {
+        const target = items.find(i => i.name === menuName);
+        if (target) {
+          currentCategory = cat;
+          selectedMenu = target;
+          found = true;
+          break;
+        }
+      }
+
+      if (!found) {
+        selectedMenu = { name: menuName, price: price };
+      }
+
+      document.getElementById("selectedMenuNameDisplay").innerText = selectedMenu.name;
+      document.getElementById("selectedMenuPriceDisplay").innerText = `${Number(selectedMenu.price).toLocaleString()}원`;
+
+      initCategoryTabs();
+      renderMenuItems();
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function resetFormState() {
+      isEditing = false;
+      document.getElementById("formModeTitle").innerText = "음료 선택 및 등록";
+      document.getElementById("cancelEditBtn").classList.add("hidden");
+      document.getElementById("submitBtnText").innerText = "주문 등록하기";
+      
+      const nameInput = document.getElementById("attendeeName");
+      nameInput.value = "";
+      nameInput.readOnly = false;
+
+      selectedMenu = null;
+      document.getElementById("selectedMenuNameDisplay").innerText = "선택 없음";
+      document.getElementById("selectedMenuPriceDisplay").innerText = "0원";
+
+      renderMenuItems();
+    }
+
+    function setSubmittingState(submitting) {
+      isSubmitting = submitting;
+      const btn = document.getElementById("submitBtn");
+      const icon = document.getElementById("submitBtnIcon");
+      const text = document.getElementById("submitBtnText");
+
+      if (submitting) {
+        btn.disabled = true;
+        btn.classList.add("opacity-70", "cursor-not-allowed");
+        icon.className = "ph-bold ph-spinner animate-spin";
+        text.innerText = "처리 중...";
+      } else {
+        btn.disabled = false;
+        btn.classList.remove("opacity-70", "cursor-not-allowed");
+        icon.className = "ph-bold ph-paper-plane-tilt";
+        text.innerText = isEditing ? "수정 완료하기" : "주문 등록하기";
+      }
+    }
+
+    function showToast(message, type = "success") {
+      const toast = document.getElementById("toast");
+      const toastContent = document.getElementById("toastContent");
+      const toastIcon = document.getElementById("toastIcon");
+      const toastMessage = document.getElementById("toastMessage");
+
+      toastMessage.innerText = message;
+      if (type === "success") {
+        toastContent.className = "flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-white font-medium text-sm bg-slate-900";
+        toastIcon.className = "ph-bold ph-check-circle text-emerald-400 text-lg";
+      } else {
+        toastContent.className = "flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg text-white font-medium text-sm bg-rose-600";
+        toastIcon.className = "ph-bold ph-warning-circle text-white text-lg";
+      }
+
+      toast.classList.remove("translate-y-[-150%]", "opacity-0", "pointer-events-none");
+      setTimeout(() => {
+        toast.classList.add("translate-y-[-150%]", "opacity-0", "pointer-events-none");
+      }, 3000);
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/[&<>"']/g, m => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      })[m]);
+    }
+
+    function escapeQuotes(str) {
+      if (!str) return '';
+      return String(str).replace(/'/g, "\\'");
+    }
+
+    // -------------------------------------------------------------
+    // 6. 초기 구동 및 폴링 타이머
+    // -------------------------------------------------------------
+    window.addEventListener("DOMContentLoaded", () => {
+      initCategoryTabs();
+      renderMenuItems();
+      fetchOrders(true);
+
+      // 5초 간격 실시간 자동 갱신
+      setInterval(() => {
+        fetchOrders(false);
+      }, 5000);
+    });
+  </script>
+</body>
+</html>
