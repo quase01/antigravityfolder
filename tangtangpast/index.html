@@ -1,0 +1,2540 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>탕탕 과거형 서바이벌 (Past Tense Survivor)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Noto+Sans+KR:wght@400;600;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0f1423;
+      --card-bg: rgba(22, 30, 53, 0.95);
+      --accent-yellow: #fcd34d;
+      --accent-cyan: #38bdf8;
+      --accent-green: #34d399;
+      --accent-red: #f87171;
+      --accent-purple: #c084fc;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border-glow: rgba(56, 189, 248, 0.35);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      font-family: 'Noto Sans KR', 'Fredoka', sans-serif;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: var(--text-main);
+    }
+
+    #game-container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: radial-gradient(circle at center, #172138 0%, #090d18 100%);
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      image-rendering: auto;
+    }
+
+    /* Top HUD */
+    #top-hud {
+      position: absolute;
+      top: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 90%;
+      max-width: 840px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    .exp-bar-container {
+      position: relative;
+      width: 100%;
+      height: 22px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 2px solid rgba(56, 189, 248, 0.5);
+      border-radius: 9999px;
+      box-shadow: 0 0 15px rgba(56, 189, 248, 0.25), inset 0 2px 4px rgba(0, 0, 0, 0.6);
+      overflow: hidden;
+    }
+
+    .exp-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #38bdf8, #818cf8, #a855f7);
+      border-radius: 9999px;
+      transition: width 0.15s ease-out;
+      box-shadow: 0 0 12px #38bdf8;
+    }
+
+    .exp-bar-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 1px;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+      color: #ffffff;
+    }
+
+    .hud-meta-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 800;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+    }
+
+    .hud-pill {
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(8px);
+      padding: 6px 14px;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+      pointer-events: auto;
+    }
+
+    .hud-pill.level {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      border: 1px solid #fbbf24;
+      color: #ffffff;
+    }
+
+    .hud-pill.timer {
+      font-family: 'Fredoka', monospace;
+      letter-spacing: 1px;
+      color: #38bdf8;
+      font-size: 16px;
+    }
+
+    .hud-pill.kills {
+      color: #f87171;
+    }
+
+    .hud-pill.words {
+      color: #a7f3d0;
+      font-size: 13px;
+    }
+
+    /* Top-Right Control Buttons */
+    .btn-group-topright {
+      position: absolute;
+      top: 14px;
+      right: 18px;
+      display: flex;
+      gap: 8px;
+      z-index: 15;
+    }
+
+    .icon-btn {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #fff;
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      cursor: pointer;
+      backdrop-filter: blur(6px);
+      transition: all 0.2s;
+    }
+
+    .icon-btn:hover {
+      background: rgba(56, 189, 248, 0.3);
+      border-color: #38bdf8;
+      transform: scale(1.05);
+    }
+
+    /* Active Skill Badges on Bottom Left */
+    #skills-tray {
+      position: absolute;
+      bottom: 16px;
+      left: 18px;
+      display: flex;
+      gap: 8px;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    .skill-badge {
+      width: 44px;
+      height: 44px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 2px solid #38bdf8;
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      position: relative;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+    }
+
+    .skill-badge span {
+      position: absolute;
+      bottom: -4px;
+      right: -4px;
+      background: #f59e0b;
+      color: #000;
+      font-size: 10px;
+      font-weight: 900;
+      padding: 1px 4px;
+      border-radius: 6px;
+      border: 1px solid #fff;
+    }
+
+    /* Generic Modal Overlay */
+    .modal-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(7, 11, 22, 0.82);
+      backdrop-filter: blur(10px);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-card {
+      background: linear-gradient(145deg, #1e293b, #0f172a);
+      border: 2px solid rgba(56, 189, 248, 0.4);
+      border-radius: 24px;
+      padding: 32px;
+      width: 90%;
+      max-width: 580px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), 0 0 30px rgba(56, 189, 248, 0.2);
+      text-align: center;
+      transform: scale(0.92);
+      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .modal-overlay.active .modal-card {
+      transform: scale(1);
+    }
+
+    /* Level Up / Quiz Modal Styling */
+    .quiz-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: linear-gradient(90deg, #f59e0b, #ef4444);
+      color: white;
+      font-size: 13px;
+      font-weight: 800;
+      padding: 6px 16px;
+      border-radius: 9999px;
+      margin-bottom: 14px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      box-shadow: 0 0 15px rgba(245, 158, 11, 0.4);
+    }
+
+    .quiz-rule-tip {
+      font-size: 13px;
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px dashed rgba(56, 189, 248, 0.4);
+      padding: 6px 14px;
+      border-radius: 12px;
+      display: inline-block;
+      margin-bottom: 16px;
+      font-weight: 600;
+    }
+
+    .quiz-question-box {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 18px;
+      padding: 20px;
+      margin-bottom: 22px;
+    }
+
+    .quiz-base-verb {
+      font-size: 44px;
+      font-weight: 900;
+      font-family: 'Fredoka', sans-serif;
+      letter-spacing: 2px;
+      color: #fcd34d;
+      text-shadow: 0 0 20px rgba(252, 211, 77, 0.5);
+      margin-bottom: 4px;
+    }
+
+    .quiz-meaning {
+      font-size: 18px;
+      color: #94a3b8;
+      font-weight: 600;
+    }
+
+    .quiz-input-group {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .quiz-input {
+      flex: 1;
+      background: #090d16;
+      border: 2px solid #38bdf8;
+      border-radius: 16px;
+      padding: 14px 20px;
+      font-size: 22px;
+      font-family: 'Fredoka', sans-serif;
+      font-weight: 700;
+      color: #ffffff;
+      outline: none;
+      text-align: center;
+      box-shadow: 0 0 15px rgba(56, 189, 248, 0.2);
+      transition: all 0.2s;
+    }
+
+    .quiz-input:focus {
+      border-color: #fcd34d;
+      box-shadow: 0 0 25px rgba(252, 211, 77, 0.4);
+    }
+
+    .quiz-submit-btn {
+      background: linear-gradient(135deg, #38bdf8, #2563eb);
+      border: none;
+      border-radius: 16px;
+      color: white;
+      font-size: 18px;
+      font-weight: 800;
+      padding: 0 24px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      box-shadow: 0 6px 15px rgba(37, 99, 235, 0.4);
+    }
+
+    .quiz-submit-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(37, 99, 235, 0.6);
+    }
+
+    .quiz-feedback {
+      min-height: 48px;
+      font-size: 15px;
+      font-weight: 700;
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .feedback-correct {
+      color: #34d399;
+      animation: pulse 0.6s infinite alternate;
+    }
+
+    .feedback-wrong {
+      color: #f87171;
+      line-height: 1.4;
+    }
+
+    /* Power-up Selection Section */
+    #powerup-section {
+      display: none;
+      flex-direction: column;
+      gap: 14px;
+      margin-top: 12px;
+    }
+
+    .powerup-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: #fcd34d;
+      margin-bottom: 4px;
+    }
+
+    .powerup-cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .powerup-card {
+      background: rgba(15, 23, 42, 0.9);
+      border: 2px solid rgba(255, 255, 255, 0.15);
+      border-radius: 16px;
+      padding: 16px 12px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .powerup-card:hover {
+      border-color: #38bdf8;
+      background: rgba(30, 41, 59, 0.95);
+      transform: translateY(-4px) scale(1.03);
+      box-shadow: 0 10px 20px rgba(56, 189, 248, 0.3);
+    }
+
+    .powerup-card .icon {
+      font-size: 32px;
+    }
+
+    .powerup-card .name {
+      font-size: 14px;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .powerup-card .desc {
+      font-size: 11px;
+      color: #94a3b8;
+      line-height: 1.3;
+    }
+
+    .powerup-card .tier-tag {
+      font-size: 9px;
+      padding: 2px 6px;
+      border-radius: 6px;
+      background: #3b82f6;
+      color: white;
+      font-weight: 700;
+    }
+
+    /* Start / Game Over Modal */
+    .title-logo {
+      font-size: 42px;
+      font-weight: 900;
+      font-family: 'Fredoka', 'Noto Sans KR', sans-serif;
+      background: linear-gradient(135deg, #fcd34d 0%, #f97316 50%, #ec4899 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+      letter-spacing: -1px;
+    }
+
+    .title-sub {
+      color: #94a3b8;
+      font-size: 15px;
+      margin-bottom: 24px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin: 20px 0;
+      background: rgba(15, 23, 42, 0.6);
+      padding: 16px;
+      border-radius: 16px;
+    }
+
+    .stat-item {
+      text-align: left;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: #64748b;
+      font-weight: 600;
+    }
+
+    .stat-value {
+      font-size: 20px;
+      font-weight: 800;
+      color: #f8fafc;
+    }
+
+    .big-btn {
+      width: 100%;
+      padding: 16px 24px;
+      background: linear-gradient(135deg, #10b981, #059669);
+      border: none;
+      border-radius: 16px;
+      color: white;
+      font-size: 20px;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: 0 10px 20px rgba(16, 185, 129, 0.4);
+      transition: all 0.2s;
+    }
+
+    .big-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 14px 28px rgba(16, 185, 129, 0.6);
+    }
+
+    .btn-secondary {
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      margin-top: 10px;
+      box-shadow: none;
+      font-size: 15px;
+      padding: 12px;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(51, 65, 85, 0.9);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+
+    /* Word Book Modal */
+    .wordbook-list {
+      max-height: 380px;
+      overflow-y: auto;
+      text-align: left;
+      padding-right: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin: 16px 0;
+    }
+
+    .wordbook-list::-webkit-scrollbar {
+      width: 6px;
+    }
+    .wordbook-list::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+
+    .wordbook-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 14px;
+    }
+
+    .wordbook-item.mastered {
+      border-color: rgba(52, 211, 153, 0.5);
+      background: rgba(16, 185, 129, 0.08);
+    }
+
+    .word-base {
+      font-weight: 800;
+      color: #38bdf8;
+    }
+    .word-past {
+      font-weight: 800;
+      color: #fcd34d;
+    }
+    .word-meaning {
+      color: #94a3b8;
+      font-size: 12px;
+    }
+    .word-rule {
+      font-size: 10px;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #cbd5e1;
+    }
+
+    /* Virtual Joystick for Mobile */
+    #touch-joystick {
+      position: absolute;
+      bottom: 30px;
+      left: 30px;
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.08);
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      z-index: 20;
+      display: none;
+      touch-action: none;
+    }
+
+    #touch-knob {
+      position: absolute;
+      top: 35px;
+      left: 35px;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: rgba(56, 189, 248, 0.6);
+      box-shadow: 0 0 15px #38bdf8;
+      pointer-events: none;
+    }
+
+    @keyframes pulse {
+      from { transform: scale(1); }
+      to { transform: scale(1.05); }
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-6px); }
+      40%, 80% { transform: translateX(6px); }
+    }
+
+    .shake {
+      animation: shake 0.4s ease;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Top HUD -->
+    <div id="top-hud">
+      <div class="exp-bar-container">
+        <div id="exp-bar-fill" class="exp-bar-fill"></div>
+        <div id="exp-bar-text" class="exp-bar-text">EXP 0 / 50</div>
+      </div>
+      <div class="hud-meta-row">
+        <div class="hud-pill level">
+          <span>Lv.</span><span id="hud-level">1</span>
+        </div>
+        <div class="hud-pill words" title="정복한 과거형 단어 수">
+          <span>📚 마스터:</span><span id="hud-words">0 / 43</span>
+        </div>
+        <div class="hud-pill timer" id="hud-timer">00:00</div>
+        <div class="hud-pill kills">
+          <span>💀</span><span id="hud-kills">0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top Right Buttons -->
+    <div class="btn-group-topright">
+      <button class="icon-btn" id="sound-btn" title="사운드 켜기/끄기">🔊</button>
+      <button class="icon-btn" id="wordbook-btn" title="단어장 보기">📖</button>
+      <button class="icon-btn" id="pause-btn" title="일시정지">⏸</button>
+    </div>
+
+    <!-- Active Skill Badges -->
+    <div id="skills-tray"></div>
+
+    <!-- Mobile Virtual Joystick -->
+    <div id="touch-joystick">
+      <div id="touch-knob"></div>
+    </div>
+
+    <!-- Start / Title Modal -->
+    <div id="start-modal" class="modal-overlay active">
+      <div class="modal-card">
+        <div class="title-logo">탕탕 과거형 서바이벌</div>
+        <div class="title-sub">몬스터를 처치하고 영어 동사 과거형 퀴즈를 맞혀 강해지세요!</div>
+
+        <div style="background: rgba(15, 23, 42, 0.7); border-radius: 16px; padding: 18px; margin-bottom: 20px; text-align: left; font-size: 13px; line-height: 1.6; color: #cbd5e1;">
+          <div style="font-weight: 800; color: #38bdf8; margin-bottom: 6px;">🎮 게임 조작법:</div>
+          • 이동: <b>W, A, S, D</b> 또는 <b>방향키</b> (모바일/터치 지원)<br>
+          • 공격: <b>자동 조준 & 발사</b> (가장 가까운 적 자동 타격)<br>
+          • 레벨업: 몬스터 처치 보석 획득 ➔ <b>과거형 단어 타이핑</b> ➔ <b>파워업 카드 선택</b>!
+        </div>
+
+        <button class="big-btn" id="start-btn">게임 시작 (Start Game)</button>
+        <button class="big-btn btn-secondary" id="start-wordbook-btn">📖 과거형 단어장 미리보기</button>
+      </div>
+    </div>
+
+    <!-- Quiz & Level Up Modal -->
+    <div id="quiz-modal" class="modal-overlay">
+      <div class="modal-card">
+        <!-- Quiz Phase -->
+        <div id="quiz-content-phase">
+          <div class="quiz-badge">⚡ LEVEL UP! 동사 과거형 퀴즈 ⚡</div>
+          <div id="quiz-rule-tip" class="quiz-rule-tip">규칙: 일반 동사 (+ed)</div>
+          
+          <div class="quiz-question-box">
+            <div id="quiz-base-verb" class="quiz-base-verb">visit</div>
+            <div id="quiz-meaning" class="quiz-meaning">(방문하다)</div>
+          </div>
+
+          <form id="quiz-form" onsubmit="return false;">
+            <div class="quiz-input-group">
+              <input type="text" id="quiz-input" class="quiz-input" placeholder="과거형 입력 (예: visited)" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+              <button type="submit" id="quiz-submit-btn" class="quiz-submit-btn">제출</button>
+            </div>
+          </form>
+
+          <div id="quiz-feedback" class="quiz-feedback">
+            키보드로 영어 과거형을 적고 Enter를 누르세요!
+          </div>
+        </div>
+
+        <!-- Power-up Cards Selection Phase (After Correct) -->
+        <div id="powerup-section">
+          <div class="powerup-title">🎉 정답입니다! 보너스 파워업을 선택하세요!</div>
+          <div class="powerup-cards" id="powerup-cards-container">
+            <!-- Dynamically populated cards -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Game Over Modal -->
+    <div id="gameover-modal" class="modal-overlay">
+      <div class="modal-card">
+        <div class="title-logo" style="background: linear-gradient(135deg, #ef4444, #f97316); -webkit-background-clip: text;">GAME OVER</div>
+        <div class="title-sub" id="gameover-sub">최선을 다해 싸웠습니다!</div>
+
+        <div class="stats-grid">
+          <div class="stat-item">
+            <div class="stat-label">생존 시간</div>
+            <div class="stat-value" id="stat-time">00:00</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">도달 레벨</div>
+            <div class="stat-value" id="stat-level">Lv.1</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">처치한 몬스터</div>
+            <div class="stat-value" id="stat-kills">0 마리</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">정복한 과거형 단어</div>
+            <div class="stat-value" id="stat-words">0 / 43</div>
+          </div>
+        </div>
+
+        <button class="big-btn" id="restart-btn">다시 도전하기 🔄</button>
+        <button class="big-btn btn-secondary" id="gameover-wordbook-btn">📖 과거형 단어 복습하기</button>
+      </div>
+    </div>
+
+    <!-- Word Book Modal -->
+    <div id="wordbook-modal" class="modal-overlay">
+      <div class="modal-card" style="max-width: 620px;">
+        <div style="font-size: 26px; font-weight: 900; color: #fcd34d; margin-bottom: 4px;">📖 초등 필수 동사의 과거형 학습 단어장</div>
+        <div style="font-size: 13px; color: #94a3b8; margin-bottom: 12px;">게임에서 출제되는 동사들을 학습하고 익혀보세요!</div>
+
+        <div class="wordbook-list" id="wordbook-list-container">
+          <!-- Dynamically populated items -->
+        </div>
+
+        <button class="big-btn btn-secondary" id="close-wordbook-btn" style="margin-top: 14px;">닫기 (Close)</button>
+      </div>
+    </div>
+
+    <!-- Pause Modal -->
+    <div id="pause-modal" class="modal-overlay">
+      <div class="modal-card">
+        <div class="title-logo" style="font-size: 32px;">일시 정지 (PAUSED)</div>
+        <div class="title-sub">잠시 휴식 중입니다.</div>
+        <button class="big-btn" id="resume-btn">게임 계속하기 ▶</button>
+        <button class="big-btn btn-secondary" id="pause-wordbook-btn">📖 단어장 열기</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ==========================================================================
+       1. DATABASE: 32 ENGLISH VERB PAST TENSE LIST
+       ========================================================================== */
+    const verbList = [
+      // 1. 현재 +ed
+      { base: "visit", past: "visited", meaning: "방문하다", rule: "1. 일반 동사 (+ed)" },
+      { base: "play", past: "played", meaning: "놀다", rule: "1. 일반 동사 (+ed)" },
+      { base: "watch", past: "watched", meaning: "보다", rule: "1. 일반 동사 (+ed)" },
+      { base: "talk", past: "talked", meaning: "이야기하다", rule: "1. 일반 동사 (+ed)" },
+      { base: "cook", past: "cooked", meaning: "요리하다", rule: "1. 일반 동사 (+ed)" },
+      { base: "learn", past: "learned", meaning: "배우다", rule: "1. 일반 동사 (+ed)" },
+      { base: "help", past: "helped", meaning: "돕다", rule: "1. 일반 동사 (+ed)" },
+
+      // 2. e로 끝나는 동사 (+d)
+      { base: "bake", past: "baked", meaning: "굽다", rule: "2. e로 끝나는 동사 (+d)" },
+      { base: "taste", past: "tasted", meaning: "맛보다", rule: "2. e로 끝나는 동사 (+d)" },
+      { base: "live", past: "lived", meaning: "살다", rule: "2. e로 끝나는 동사 (+d)" },
+      { base: "move", past: "moved", meaning: "움직이다", rule: "2. e로 끝나는 동사 (+d)" },
+      { base: "like", past: "liked", meaning: "좋아하다", rule: "2. e로 끝나는 동사 (+d)" },
+      { base: "love", past: "loved", meaning: "사랑하다", rule: "2. e로 끝나는 동사 (+d)" },
+      { base: "close", past: "closed", meaning: "닫다", rule: "2. e로 끝나는 동사 (+d)" },
+      { base: "smile", past: "smiled", meaning: "웃다", rule: "2. e로 끝나는 동사 (+d)" },
+
+      // 3. y로 끝나는 동사 (y -> i+ed)
+      { base: "study", past: "studied", meaning: "공부하다", rule: "3. 자음 + y (y → i+ed)" },
+      { base: "try", past: "tried", meaning: "시도하다", rule: "3. 자음 + y (y → i+ed)" },
+      { base: "cry", past: "cried", meaning: "울다", rule: "3. 자음 + y (y → i+ed)" },
+      { base: "marry", past: "married", meaning: "결혼하다", rule: "3. 자음 + y (y → i+ed)" },
+      { base: "dry", past: "dried", meaning: "마르다", rule: "3. 자음 + y (y → i+ed)" },
+
+      // 4. 단모음+단자음 (자음 추가 +ed)
+      { base: "stop", past: "stopped", meaning: "멈추다", rule: "4. 단모음+단자음 (끝자음 반복+ed)" },
+      { base: "drop", past: "dropped", meaning: "떨어지다", rule: "4. 단모음+단자음 (끝자음 반복+ed)" },
+
+      // 5. 불규칙 동사
+      { base: "make", past: "made", meaning: "만들다", rule: "5. 불규칙 동사 (Irregular)" },
+      { base: "tell", past: "told", meaning: "말하다", rule: "5. 불규칙 동사 (Irregular)" },
+      { base: "go", past: "went", meaning: "가다", rule: "5. 불규칙 동사 (Irregular)" },
+      { base: "write", past: "wrote", meaning: "쓰다", rule: "5. 불규칙 동사 (Irregular)" },
+      { base: "meet", past: "met", meaning: "만나다", rule: "5. 불규칙 동사 (Irregular)" },
+      { base: "come", past: "came", meaning: "오다", rule: "5. 불규칙 동사 (Irregular)" },
+      { base: "buy", past: "bought", meaning: "사다", rule: "5. 불규칙 동사 (Irregular)" },
+      { base: "get", past: "got", meaning: "얻다", rule: "5. 불규칙 동사 (Irregular)" },
+      { base: "have", past: "had", meaning: "가지다", rule: "5. 불규칙 동사 (Irregular)" },
+      { base: "run", past: "ran", meaning: "달리다", rule: "5. 불규칙 동사 (Irregular)" },
+      { base: "take", past: "took", meaning: "가져가다", rule: "5. 불규칙 동사 (Irregular)" },
+      { base: "ride", past: "rode", meaning: "타다", rule: "5. 불규칙 동사 (Irregular)" },
+      { base: "see", past: "saw", meaning: "보다", rule: "5. 불규칙 동사 (Irregular)" },
+      { base: "eat", past: "ate", meaning: "먹다", rule: "5. 불규칙 동사 (Irregular)" },
+      { base: "drink", past: "drank", meaning: "마시다", rule: "5. 불규칙 동사 (Irregular)" },
+      { base: "sit", past: "sat", meaning: "앉다", rule: "5. 불규칙 동사 (Irregular)" },
+      { base: "read", past: "read", meaning: "읽다", rule: "5. 불규칙 동사 (스펠링 동일/발음 레드)" },
+      { base: "put", past: "put", meaning: "두다", rule: "5. 불규칙 동사 (형태 동일)" },
+      { base: "is", past: "was", meaning: "~이다(단수)", rule: "5. be동사 불규칙 (is → was)" },
+      { base: "are", past: "were", meaning: "~이다(복수)", rule: "5. be동사 불규칙 (are → were)" },
+      { base: "do", past: "did", meaning: "하다", rule: "5. do동사 불규칙 (do → did)" }
+    ];
+
+    /* ==========================================================================
+       2. PROCEDURAL SOUND SYNTHESIZER (WEB AUDIO API)
+       ========================================================================== */
+    class SoundController {
+      constructor() {
+        this.ctx = null;
+        this.muted = false;
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AudioContext();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      playShoot() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(640, now);
+        osc.frequency.exponentialRampToValueAtTime(140, now + 0.12);
+
+        gain.gain.setValueAtTime(0.18, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.12);
+      }
+
+      playHit() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(180, now);
+        osc.frequency.exponentialRampToValueAtTime(60, now + 0.08);
+
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.08);
+      }
+
+      playGem() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        const notes = [523.25, 659.25, 783.99, 1046.50];
+        const freq = notes[Math.floor(Math.random() * notes.length)];
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now);
+        osc.frequency.exponentialRampToValueAtTime(freq * 1.5, now + 0.14);
+
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.005, now + 0.14);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.14);
+      }
+
+      playCorrect() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const chords = [523.25, 659.25, 783.99, 1046.50]; // C Major
+        chords.forEach((f, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          const time = now + idx * 0.08;
+
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(f, time);
+
+          gain.gain.setValueAtTime(0.2, time);
+          gain.gain.exponentialRampToValueAtTime(0.001, time + 0.35);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(time);
+          osc.stop(time + 0.35);
+        });
+      }
+
+      playWrong() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(140, now);
+        osc.frequency.setValueAtTime(110, now + 0.15);
+
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.35);
+      }
+
+      playLevelUp() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const notes = [440, 554.37, 659.25, 880];
+        notes.forEach((f, i) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          const t = now + i * 0.09;
+
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(f, t);
+
+          gain.gain.setValueAtTime(0.22, t);
+          gain.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(t);
+          osc.stop(t + 0.3);
+        });
+      }
+
+      playThunder() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(320, now);
+        osc.frequency.exponentialRampToValueAtTime(40, now + 0.22);
+
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.22);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.22);
+      }
+
+      playGameOver() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const freqs = [392.00, 369.99, 349.23, 311.13];
+        freqs.forEach((f, i) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          const t = now + i * 0.18;
+
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(f, t);
+
+          gain.gain.setValueAtTime(0.25, t);
+          gain.gain.exponentialRampToValueAtTime(0.01, t + 0.35);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(t);
+          osc.stop(t + 0.35);
+        });
+      }
+    }
+
+    const sound = new SoundController();
+
+    /* ==========================================================================
+       3. POWER-UP CARDS POOL DEFINITIONS
+       ========================================================================== */
+    const ALL_POWERUPS = [
+      {
+        id: "damage",
+        name: "공격력 강화",
+        desc: "모든 발사체 데미지 +30%",
+        icon: "⚔️",
+        tier: "Attack",
+        apply: (game) => { game.player.damageMultiplier += 0.3; }
+      },
+      {
+        id: "multishot",
+        name: "다중 발사체",
+        desc: "동시 발사체 개수 +1발",
+        icon: "🏹",
+        tier: "Skill",
+        apply: (game) => { game.player.projectilesCount += 1; }
+      },
+      {
+        id: "firespeed",
+        name: "공격 속도 증가",
+        desc: "공격 쿨타임 -20% 감소",
+        icon: "⚡",
+        tier: "Speed",
+        apply: (game) => { game.player.attackCooldown = Math.max(120, game.player.attackCooldown * 0.8); }
+      },
+      {
+        id: "movespeed",
+        name: "기동성 증가",
+        desc: "플레이어 이동속도 +20%",
+        icon: "👟",
+        tier: "Utility",
+        apply: (game) => { game.player.speed *= 1.2; }
+      },
+      {
+        id: "orbiters",
+        name: "수호 위성 생성",
+        desc: "주위를 회전하며 적을 벨 수 있는 에너지 구체 +1기",
+        icon: "🔮",
+        tier: "Defensive",
+        apply: (game) => { game.player.orbitersCount += 1; }
+      },
+      {
+        id: "thunder",
+        name: "번개 낙뢰 소환",
+        desc: "주기적으로 적에게 번개 폭격을 가함 (번개 +1줄기)",
+        icon: "🌩️",
+        tier: "Active",
+        apply: (game) => { game.player.thunderStrikes += 1; }
+      },
+      {
+        id: "magnet",
+        name: "아이템 자석",
+        desc: "경험치 보석 흡수 범위 +40%",
+        icon: "🧲",
+        tier: "Utility",
+        apply: (game) => { game.player.magnetRadius *= 1.4; }
+      },
+      {
+        id: "heal_maxhp",
+        name: "체력 증강 및 회복",
+        desc: "최대 HP +25 및 현재 HP 100% 즉시 회복",
+        icon: "💖",
+        tier: "Survival",
+        apply: (game) => {
+          game.player.maxHp += 25;
+          game.player.hp = game.player.maxHp;
+        }
+      },
+      {
+        id: "pierce",
+        name: "관통 탄환",
+        desc: "발사체가 적을 관통하는 횟수 +1회",
+        icon: "🎯",
+        tier: "Attack",
+        apply: (game) => { game.player.pierceCount += 1; }
+      }
+    ];
+
+    /* ==========================================================================
+       4. GAME ENGINE CLASS
+       ========================================================================== */
+    class Game {
+      constructor() {
+        this.canvas = document.getElementById('gameCanvas');
+        this.ctx = this.canvas.getContext('2d');
+
+        this.width = window.innerWidth;
+        this.height = window.innerHeight;
+        this.canvas.width = this.width;
+        this.canvas.height = this.height;
+
+        // Game State
+        this.isStarted = false;
+        this.isPaused = false;
+        this.isGameOver = false;
+        this.isQuizActive = false;
+
+        this.gameTime = 0; // in seconds
+        this.lastTime = performance.now();
+        this.kills = 0;
+        this.level = 1;
+        this.exp = 0;
+        this.expNeeded = 60;
+
+        // Mastered Verbs Set
+        this.masteredVerbs = new Set();
+        this.currentQuiz = null;
+
+        // Camera
+        this.camera = { x: 0, y: 0 };
+
+        // Entities
+        this.player = null;
+        this.monsters = [];
+        this.projectiles = [];
+        this.gems = [];
+        this.particles = [];
+        this.floatingTexts = [];
+        this.thunderVisuals = [];
+
+        // Character Sprite Sheet (from character.png)
+        this.characterImage = new Image();
+        this.characterImageLoaded = false;
+        this.characterImage.onload = () => {
+          this.characterImageLoaded = true;
+        };
+        this.characterImage.src = 'character.png';
+
+        // Sprite Sheet layout: 5 cols x 3 rows (Row 0: IDLE, Row 1: WALK, Row 2: ATTACK)
+        this.spriteConfig = {
+          cols: [236, 470, 704, 938, 1172],
+          frameWidth: 232,
+          rows: {
+            idle: { y: 63, h: 230, frames: 5 },
+            walk: { y: 295, h: 231, frames: 5 },
+            attack: { y: 529, h: 236, frames: 5 }
+          }
+        };
+
+        // Monster1 (Slime) Sprite Sheet (from monster1.png)
+        this.monsterImage = new Image();
+        this.monsterImageLoaded = false;
+        this.monsterImage.onload = () => {
+          this.monsterImageLoaded = true;
+        };
+        this.monsterImage.src = 'monster1.png';
+
+        // Monster1 frames layout
+        this.monster1Config = {
+          moveFrames: [
+            { x: 105, y: 183, w: 270, h: 281, hopY: 0 },
+            { x: 585, y: 183, w: 268, h: 280, hopY: 2 },
+            { x: 1076, y: 42, w: 247, h: 363, hopY: -14 },
+            { x: 1522, y: 204, w: 309, h: 268, hopY: 3 }
+          ],
+          hitFrame: { x: 72, y: 637, w: 339, h: 336 },
+          deathFrames: [
+            { x: 558, y: 662, w: 362, h: 308, dur: 140 },
+            { x: 1033, y: 621, w: 362, h: 358, dur: 180 },
+            { x: 1471, y: 831, w: 384, h: 157, dur: 380 }
+          ]
+        };
+
+        this.dyingMonsters = [];
+
+        // Timers & Spawn
+        this.monsterSpawnTimer = 0;
+        this.monsterSpawnInterval = 1000; // ms
+        this.attackTimer = 0;
+        this.thunderTimer = 0;
+
+        // Input
+        this.keys = {};
+        this.touchInput = { active: false, dx: 0, dy: 0 };
+
+        this.initEventListeners();
+        this.resetGame();
+      }
+
+      resetGame() {
+        this.gameTime = 0;
+        this.kills = 0;
+        this.level = 1;
+        this.exp = 0;
+        this.expNeeded = 60;
+        this.masteredVerbs.clear();
+        this.dyingMonsters = [];
+
+        this.player = {
+          x: 0,
+          y: 0,
+          radius: 18,
+          speed: 3.6,
+          hp: 100,
+          maxHp: 100,
+          // Sprite Animation States
+          animState: 'idle', // 'idle' | 'walk' | 'attack'
+          currentFrame: 0,
+          animTimer: 0,
+          attackAnimTimer: 0,
+          // Upgrades
+          damageMultiplier: 1.0,
+          attackCooldown: 400, // ms
+          projectilesCount: 1,
+          pierceCount: 1,
+          orbitersCount: 0,
+          thunderStrikes: 0,
+          magnetRadius: 110,
+          facingAngle: 0,
+          walkCycle: 0
+        };
+
+        this.monsters = [];
+        this.projectiles = [];
+        this.gems = [];
+        this.particles = [];
+        this.floatingTexts = [];
+        this.thunderVisuals = [];
+
+        this.monsterSpawnInterval = 900;
+        this.updateHUD();
+      }
+
+      initEventListeners() {
+        window.addEventListener('resize', () => {
+          this.width = window.innerWidth;
+          this.height = window.innerHeight;
+          this.canvas.width = this.width;
+          this.canvas.height = this.height;
+        });
+
+        // Keyboard Controls
+        window.addEventListener('keydown', (e) => {
+          if (this.activePowerupChoices && this.activePowerupChoices.length > 0) {
+            if (e.key === '1' && this.activePowerupChoices[0]) {
+              this.activePowerupChoices[0].apply(this);
+              sound.playGem();
+              this.closeQuizModal();
+              return;
+            } else if (e.key === '2' && this.activePowerupChoices[1]) {
+              this.activePowerupChoices[1].apply(this);
+              sound.playGem();
+              this.closeQuizModal();
+              return;
+            } else if (e.key === '3' && this.activePowerupChoices[2]) {
+              this.activePowerupChoices[2].apply(this);
+              sound.playGem();
+              this.closeQuizModal();
+              return;
+            }
+          }
+
+          if (this.isQuizActive) return; // Do not move player while typing
+          this.keys[e.key.toLowerCase()] = true;
+          this.keys[e.code] = true;
+
+          if (e.key === 'Escape' && this.isStarted && !this.isGameOver && !this.isQuizActive) {
+            this.togglePause();
+          }
+        });
+
+        window.addEventListener('keyup', (e) => {
+          this.keys[e.key.toLowerCase()] = false;
+          this.keys[e.code] = false;
+        });
+
+        // Touch Joystick
+        const joystick = document.getElementById('touch-joystick');
+        const knob = document.getElementById('touch-knob');
+        let touchOrigin = null;
+
+        const onTouchStart = (e) => {
+          if (this.isQuizActive || !this.isStarted || this.isPaused) return;
+          const touch = e.touches[0];
+          touchOrigin = { x: touch.clientX, y: touch.clientY };
+          this.touchInput.active = true;
+          joystick.style.display = 'block';
+          joystick.style.left = (touch.clientX - 60) + 'px';
+          joystick.style.top = (touch.clientY - 60) + 'px';
+          knob.style.transform = `translate(0px, 0px)`;
+        };
+
+        const onTouchMove = (e) => {
+          if (!this.touchInput.active || !touchOrigin) return;
+          const touch = e.touches[0];
+          let dx = touch.clientX - touchOrigin.x;
+          let dy = touch.clientY - touchOrigin.y;
+          const dist = Math.hypot(dx, dy);
+          const maxDist = 45;
+
+          if (dist > maxDist) {
+            dx = (dx / dist) * maxDist;
+            dy = (dy / dist) * maxDist;
+          }
+
+          knob.style.transform = `translate(${dx}px, ${dy}px)`;
+          this.touchInput.dx = dx / maxDist;
+          this.touchInput.dy = dy / maxDist;
+        };
+
+        const onTouchEnd = () => {
+          this.touchInput.active = false;
+          this.touchInput.dx = 0;
+          this.touchInput.dy = 0;
+          joystick.style.display = 'none';
+        };
+
+        window.addEventListener('touchstart', (e) => {
+          if (e.target.closest('.modal-card') || e.target.closest('.icon-btn') || e.target.closest('button') || e.target.closest('input')) return;
+          onTouchStart(e);
+        }, { passive: false });
+
+        window.addEventListener('touchmove', onTouchMove, { passive: false });
+        window.addEventListener('touchend', onTouchEnd);
+        window.addEventListener('touchcancel', onTouchEnd);
+
+        // Sound Toggle
+        document.getElementById('sound-btn').addEventListener('click', () => {
+          sound.init();
+          sound.muted = !sound.muted;
+          document.getElementById('sound-btn').innerText = sound.muted ? '🔇' : '🔊';
+        });
+
+        // Pause Toggle
+        document.getElementById('pause-btn').addEventListener('click', () => {
+          if (this.isStarted && !this.isGameOver && !this.isQuizActive) {
+            this.togglePause();
+          }
+        });
+        document.getElementById('resume-btn').addEventListener('click', () => {
+          this.togglePause();
+        });
+
+        // Word Book Button
+        const openWordBook = () => {
+          this.renderWordBook();
+          document.getElementById('wordbook-modal').classList.add('active');
+        };
+        document.getElementById('wordbook-btn').addEventListener('click', openWordBook);
+        document.getElementById('start-wordbook-btn').addEventListener('click', openWordBook);
+        document.getElementById('pause-wordbook-btn').addEventListener('click', openWordBook);
+        document.getElementById('gameover-wordbook-btn').addEventListener('click', openWordBook);
+        document.getElementById('close-wordbook-btn').addEventListener('click', () => {
+          document.getElementById('wordbook-modal').classList.remove('active');
+        });
+
+        // Start Button
+        document.getElementById('start-btn').addEventListener('click', () => {
+          sound.init();
+          document.getElementById('start-modal').classList.remove('active');
+          this.isStarted = true;
+          this.isPaused = false;
+          this.lastTime = performance.now();
+        });
+
+        // Restart Button
+        document.getElementById('restart-btn').addEventListener('click', () => {
+          document.getElementById('gameover-modal').classList.remove('active');
+          this.resetGame();
+          this.isStarted = true;
+          this.isGameOver = false;
+          this.isPaused = false;
+          this.lastTime = performance.now();
+        });
+
+        // Quiz Submit
+        const quizForm = document.getElementById('quiz-form');
+        quizForm.addEventListener('submit', (e) => {
+          e.preventDefault();
+          this.checkQuizAnswer();
+        });
+      }
+
+      togglePause() {
+        this.isPaused = !this.isPaused;
+        const pauseModal = document.getElementById('pause-modal');
+        if (this.isPaused) {
+          pauseModal.classList.add('active');
+        } else {
+          pauseModal.classList.remove('active');
+          this.lastTime = performance.now();
+        }
+      }
+
+      /* ==========================================================================
+         5. QUIZ & LEVEL-UP FLOW
+         ========================================================================== */
+      triggerLevelUpQuiz() {
+        this.isPaused = true;
+        this.isQuizActive = true;
+        this.keys = {}; // Clear key states to prevent player drifting
+
+        sound.playLevelUp();
+
+        // Pick a verb (prioritize unmastered)
+        const unmastered = verbList.filter(v => !this.masteredVerbs.has(v.base));
+        const pool = unmastered.length > 0 ? unmastered : verbList;
+        this.currentQuiz = pool[Math.floor(Math.random() * pool.length)];
+
+        // Update Quiz UI
+        document.getElementById('quiz-base-verb').innerText = this.currentQuiz.base;
+        document.getElementById('quiz-meaning').innerText = `(${this.currentQuiz.meaning})`;
+        document.getElementById('quiz-rule-tip').innerText = `💡 규칙 가이드: ${this.currentQuiz.rule}`;
+
+        const quizInput = document.getElementById('quiz-input');
+        quizInput.value = '';
+        quizInput.disabled = false;
+        document.getElementById('quiz-submit-btn').disabled = false;
+
+        const feedbackEl = document.getElementById('quiz-feedback');
+        feedbackEl.className = 'quiz-feedback';
+        feedbackEl.innerHTML = '키보드로 영문 과거형을 입력하고 [Enter]를 누르세요!';
+
+        document.getElementById('quiz-content-phase').style.display = 'block';
+        document.getElementById('powerup-section').style.display = 'none';
+
+        const quizModal = document.getElementById('quiz-modal');
+        quizModal.classList.add('active');
+
+        setTimeout(() => {
+          quizInput.focus();
+        }, 150);
+      }
+
+      checkQuizAnswer() {
+        const inputEl = document.getElementById('quiz-input');
+        const userTyped = inputEl.value.toLowerCase().trim();
+        const correctAnswer = this.currentQuiz.past.toLowerCase().trim();
+        const feedbackEl = document.getElementById('quiz-feedback');
+
+        if (!userTyped) {
+          feedbackEl.innerHTML = '<span style="color:#fcd34d;">단어를 입력해 주세요!</span>';
+          return;
+        }
+
+        inputEl.disabled = true;
+        document.getElementById('quiz-submit-btn').disabled = true;
+
+        if (userTyped === correctAnswer) {
+          // CORRECT ANSWER!
+          sound.playCorrect();
+          this.masteredVerbs.add(this.currentQuiz.base);
+          this.updateHUD();
+
+          feedbackEl.className = 'quiz-feedback feedback-correct';
+          feedbackEl.innerHTML = `🎉 정답입니다! (${this.currentQuiz.base} ➔ <b>${this.currentQuiz.past}</b>)`;
+
+          // Show powerup cards after 0.5s
+          setTimeout(() => {
+            document.getElementById('quiz-content-phase').style.display = 'none';
+            this.showPowerupCards();
+          }, 650);
+
+        } else {
+          // WRONG ANSWER!
+          sound.playWrong();
+          const card = document.querySelector('#quiz-modal .modal-card');
+          card.classList.add('shake');
+          setTimeout(() => card.classList.remove('shake'), 400);
+
+          feedbackEl.className = 'quiz-feedback feedback-wrong';
+          feedbackEl.innerHTML = `😢 오답! 정답은 [ <b style="color:#fcd34d; font-size:18px;">${this.currentQuiz.past}</b> ] 입니다.<br><small style="color:#cbd5e1;">1.5초 후 복습과 함께 게임이 재개됩니다.</small>`;
+
+          // Resume after 1.6s
+          setTimeout(() => {
+            // Give tiny emergency consolation heal (10% HP)
+            this.player.hp = Math.min(this.player.maxHp, this.player.hp + this.player.maxHp * 0.1);
+            this.closeQuizModal();
+          }, 1600);
+        }
+      }
+
+      showPowerupCards() {
+        const powerupSec = document.getElementById('powerup-section');
+        const container = document.getElementById('powerup-cards-container');
+        container.innerHTML = '';
+
+        // Pick 3 random powerups
+        const shuffled = [...ALL_POWERUPS].sort(() => 0.5 - Math.random());
+        const chosen = shuffled.slice(0, 3);
+        this.activePowerupChoices = chosen;
+
+        chosen.forEach((p, idx) => {
+          const card = document.createElement('div');
+          card.className = 'powerup-card';
+          card.innerHTML = `
+            <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+              <span class="tier-tag">${p.tier}</span>
+              <span style="font-size:10px; font-weight:800; color:#fcd34d; background:rgba(0,0,0,0.35); padding:2px 6px; border-radius:6px; border:1px solid rgba(252,211,77,0.3);">[${idx + 1}]</span>
+            </div>
+            <div class="icon">${p.icon}</div>
+            <div class="name">${p.name}</div>
+            <div class="desc">${p.desc}</div>
+          `;
+          card.addEventListener('click', () => {
+            p.apply(this);
+            sound.playGem();
+            this.closeQuizModal();
+          });
+          container.appendChild(card);
+        });
+
+        powerupSec.style.display = 'flex';
+      }
+
+      closeQuizModal() {
+        this.activePowerupChoices = null;
+        document.getElementById('quiz-modal').classList.remove('active');
+        this.isQuizActive = false;
+        this.isPaused = false;
+        this.lastTime = performance.now();
+      }
+
+      renderWordBook() {
+        const container = document.getElementById('wordbook-list-container');
+        container.innerHTML = '';
+
+        verbList.forEach(v => {
+          const isMastered = this.masteredVerbs.has(v.base);
+          const item = document.createElement('div');
+          item.className = `wordbook-item ${isMastered ? 'mastered' : ''}`;
+          item.innerHTML = `
+            <div>
+              <span class="word-base">${v.base}</span>
+              <span style="color:#64748b; margin: 0 4px;">➔</span>
+              <span class="word-past">${v.past}</span>
+              <span class="word-meaning">(${v.meaning})</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="word-rule">${v.rule}</span>
+              <span>${isMastered ? '✅' : '⚪'}</span>
+            </div>
+          `;
+          container.appendChild(item);
+        });
+      }
+
+      updateHUD() {
+        document.getElementById('hud-level').innerText = this.level;
+        document.getElementById('hud-kills').innerText = this.kills;
+        document.getElementById('hud-words').innerText = `${this.masteredVerbs.size} / ${verbList.length}`;
+
+        const pct = Math.min(100, Math.floor((this.exp / this.expNeeded) * 100));
+        document.getElementById('exp-bar-fill').style.width = `${pct}%`;
+        document.getElementById('exp-bar-text').innerText = `EXP ${Math.floor(this.exp)} / ${this.expNeeded} (${pct}%)`;
+
+        // Skills badges update
+        const tray = document.getElementById('skills-tray');
+        tray.innerHTML = '';
+        if (this.player.projectilesCount > 1) {
+          tray.innerHTML += `<div class="skill-badge" title="다중 발사">🏹<span>+${this.player.projectilesCount - 1}</span></div>`;
+        }
+        if (this.player.orbitersCount > 0) {
+          tray.innerHTML += `<div class="skill-badge" title="회전 위성">🔮<span>${this.player.orbitersCount}</span></div>`;
+        }
+        if (this.player.thunderStrikes > 0) {
+          tray.innerHTML += `<div class="skill-badge" title="낙뢰 공격">🌩️<span>${this.player.thunderStrikes}</span></div>`;
+        }
+        if (this.player.pierceCount > 1) {
+          tray.innerHTML += `<div class="skill-badge" title="관통 탄환">🎯<span>${this.player.pierceCount}</span></div>`;
+        }
+      }
+
+      /* ==========================================================================
+         6. GAMEPLAY LOOP & ENTITY UPDATES
+         ========================================================================== */
+      start() {
+        const loop = (currentTime) => {
+          requestAnimationFrame(loop);
+
+          const dt = Math.min(100, currentTime - this.lastTime);
+          this.lastTime = currentTime;
+
+          if (this.isStarted && !this.isPaused && !this.isGameOver) {
+            this.update(dt);
+          }
+          this.render();
+        };
+        requestAnimationFrame(loop);
+      }
+
+      update(dt) {
+        this.gameTime += dt / 1000;
+        const minutes = Math.floor(this.gameTime / 60);
+        const seconds = Math.floor(this.gameTime % 60);
+        document.getElementById('hud-timer').innerText = 
+          `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+        // 1. Player Movement
+        let moveX = 0;
+        let moveY = 0;
+
+        if (this.keys['w'] || this.keys['arrowup']) moveY -= 1;
+        if (this.keys['s'] || this.keys['arrowdown']) moveY += 1;
+        if (this.keys['a'] || this.keys['arrowleft']) moveX -= 1;
+        if (this.keys['d'] || this.keys['arrowright']) moveX += 1;
+
+        if (this.touchInput.active) {
+          moveX = this.touchInput.dx;
+          moveY = this.touchInput.dy;
+        }
+
+        const len = Math.hypot(moveX, moveY);
+        const isMoving = len > 0.05;
+        if (isMoving) {
+          const normX = moveX / (len > 1 ? len : 1);
+          const normY = moveY / (len > 1 ? len : 1);
+          this.player.x += normX * this.player.speed;
+          this.player.y += normY * this.player.speed;
+          if (this.player.attackAnimTimer <= 0) {
+            this.player.facingAngle = Math.atan2(normY, normX);
+          }
+          this.player.walkCycle += 0.2;
+        }
+
+        // Animation State Controller (IDLE / WALK / ATTACK)
+        if (this.player.attackAnimTimer > 0) {
+          this.player.attackAnimTimer -= dt;
+          if (this.player.animState !== 'attack') {
+            this.player.animState = 'attack';
+            this.player.currentFrame = 0;
+            this.player.animTimer = 0;
+          }
+          this.player.animTimer += dt;
+          if (this.player.animTimer >= 55) {
+            this.player.animTimer = 0;
+            this.player.currentFrame = (this.player.currentFrame + 1) % 5;
+          }
+        } else if (isMoving) {
+          if (this.player.animState !== 'walk') {
+            this.player.animState = 'walk';
+            this.player.currentFrame = 0;
+            this.player.animTimer = 0;
+          }
+          this.player.animTimer += dt;
+          if (this.player.animTimer >= 95) {
+            this.player.animTimer = 0;
+            this.player.currentFrame = (this.player.currentFrame + 1) % 5;
+          }
+        } else {
+          if (this.player.animState !== 'idle') {
+            this.player.animState = 'idle';
+            this.player.currentFrame = 0;
+            this.player.animTimer = 0;
+          }
+          this.player.animTimer += dt;
+          if (this.player.animTimer >= 180) {
+            this.player.animTimer = 0;
+            this.player.currentFrame = (this.player.currentFrame + 1) % 5;
+          }
+        }
+
+        // Camera Follows Player
+        this.camera.x = this.player.x - this.width / 2;
+        this.camera.y = this.player.y - this.height / 2;
+
+        // 2. Monster Spawning
+        this.monsterSpawnTimer += dt;
+        if (this.monsterSpawnTimer > this.monsterSpawnInterval) {
+          this.monsterSpawnTimer = 0;
+          this.spawnMonsterWave();
+        }
+
+        // 3. Auto Shoot Main Weapon
+        this.attackTimer += dt;
+        if (this.attackTimer >= this.player.attackCooldown) {
+          this.attackTimer = 0;
+          this.autoShootNearest();
+        }
+
+        // 4. Thunder Strike Skill
+        if (this.player.thunderStrikes > 0) {
+          this.thunderTimer += dt;
+          if (this.thunderTimer >= 2200) {
+            this.thunderTimer = 0;
+            this.castThunderStrike();
+          }
+        }
+
+        // 5. Update Orbiters
+        this.updateOrbiters(dt);
+
+        // 6. Update Projectiles
+        for (let i = this.projectiles.length - 1; i >= 0; i--) {
+          const p = this.projectiles[i];
+          p.x += p.vx;
+          p.y += p.vy;
+          p.life -= dt;
+
+          // Check hit against monsters
+          for (let j = 0; j < this.monsters.length; j++) {
+            const m = this.monsters[j];
+            if (p.hitTargets.has(m)) continue;
+
+            const dist = Math.hypot(p.x - m.x, p.y - m.y);
+            if (dist < p.radius + m.radius) {
+              p.hitTargets.add(m);
+              this.damageMonster(m, p.damage, p.isCrit);
+              p.pierce -= 1;
+              sound.playHit();
+              this.createImpactParticles(p.x, p.y, p.color, 4);
+
+              if (p.pierce <= 0) {
+                p.life = 0;
+                break;
+              }
+            }
+          }
+
+          if (p.life <= 0) {
+            this.projectiles.splice(i, 1);
+          }
+        }
+
+        // 7. Update Monsters
+        for (let i = this.monsters.length - 1; i >= 0; i--) {
+          const m = this.monsters[i];
+          const dx = this.player.x - m.x;
+          const dy = this.player.y - m.y;
+          const dist = Math.hypot(dx, dy);
+
+          if (dist > 0.1) {
+            m.x += (dx / dist) * m.speed;
+            m.y += (dy / dist) * m.speed;
+          }
+
+          if (m.type === 'slime') {
+            m.animTimer = (m.animTimer || 0) + dt;
+            m.facingLeft = (this.player.x < m.x);
+            if (m.hitTimer > 0) {
+              m.hitTimer -= dt;
+            }
+          }
+
+          // Damage player on contact
+          if (dist < m.radius + this.player.radius) {
+            this.player.hp -= m.contactDamage * (dt / 1000);
+            if (this.player.hp <= 0) {
+              this.triggerGameOver();
+              return;
+            }
+          }
+        }
+
+        // 7.1 Update Dying Monsters (Slime death sequence from monster1.png)
+        for (let i = this.dyingMonsters.length - 1; i >= 0; i--) {
+          const dm = this.dyingMonsters[i];
+          dm.timer += dt;
+          if (dm.timer < 140) {
+            dm.frame = 0; // Deflated sigh
+          } else if (dm.timer < 320) {
+            dm.frame = 1; // Smoke puff explosion
+          } else {
+            dm.frame = 2; // Melted puddle
+            dm.alpha = Math.max(0, 1 - (dm.timer - 320) / 380);
+          }
+
+          if (dm.timer >= 700) {
+            this.dyingMonsters.splice(i, 1);
+          }
+        }
+
+        // 8. Update Gems & Magnet
+        for (let i = this.gems.length - 1; i >= 0; i--) {
+          const g = this.gems[i];
+          const dx = this.player.x - g.x;
+          const dy = this.player.y - g.y;
+          const dist = Math.hypot(dx, dy);
+
+          if (dist < this.player.magnetRadius) {
+            const speed = 7.5;
+            g.x += (dx / dist) * speed;
+            g.y += (dy / dist) * speed;
+          }
+
+          if (dist < this.player.radius + g.radius) {
+            this.exp += g.val;
+            sound.playGem();
+            this.gems.splice(i, 1);
+
+            // Check Level up
+            if (this.exp >= this.expNeeded) {
+              this.level++;
+              this.exp -= this.expNeeded;
+              this.expNeeded = Math.floor(this.expNeeded * 1.35 + 20);
+              this.updateHUD();
+              this.triggerLevelUpQuiz();
+              return;
+            }
+            this.updateHUD();
+          }
+        }
+
+        // 9. Update Visual Particles & Floating Text
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+          const pt = this.particles[i];
+          pt.x += pt.vx;
+          pt.y += pt.vy;
+          pt.alpha -= 0.025;
+          if (pt.alpha <= 0) this.particles.splice(i, 1);
+        }
+
+        for (let i = this.floatingTexts.length - 1; i >= 0; i--) {
+          const ft = this.floatingTexts[i];
+          ft.y += ft.vy;
+          ft.alpha -= 0.02;
+          if (ft.alpha <= 0) this.floatingTexts.splice(i, 1);
+        }
+
+        for (let i = this.thunderVisuals.length - 1; i >= 0; i--) {
+          this.thunderVisuals[i].alpha -= 0.05;
+          if (this.thunderVisuals[i].alpha <= 0) this.thunderVisuals.splice(i, 1);
+        }
+      }
+
+      spawnMonsterWave() {
+        const count = Math.min(14, 2 + Math.floor(this.gameTime / 20));
+        const distance = Math.max(this.width, this.height) / 2 + 80;
+
+        for (let i = 0; i < count; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const spawnX = this.player.x + Math.cos(angle) * distance;
+          const spawnY = this.player.y + Math.sin(angle) * distance;
+
+          const roll = Math.random();
+          let type = 'slime';
+
+          if (this.gameTime > 50 && roll < 0.2) {
+            type = 'golem';
+          } else if (this.gameTime > 25 && roll < 0.5) {
+            type = 'bat';
+          }
+
+          // Boss check every 90 seconds
+          if (this.gameTime > 75 && Math.random() < 0.04 && !this.monsters.some(m => m.type === 'boss')) {
+            type = 'boss';
+          }
+
+          let m = {
+            type: type,
+            x: spawnX,
+            y: spawnY,
+            radius: 18,
+            hp: 20 + this.gameTime * 0.8,
+            maxHp: 20 + this.gameTime * 0.8,
+            speed: 1.8 + Math.random() * 0.4,
+            contactDamage: 18,
+            color: '#c084fc',
+            gemValue: 12,
+            animTimer: Math.random() * 500,
+            hitTimer: 0,
+            facingLeft: false
+          };
+
+          if (type === 'bat') {
+            m.radius = 12;
+            m.speed = 3.2;
+            m.hp *= 0.6;
+            m.maxHp = m.hp;
+            m.color = '#a855f7';
+            m.gemValue = 16;
+          } else if (type === 'golem') {
+            m.radius = 26;
+            m.speed = 1.1;
+            m.hp *= 2.8;
+            m.maxHp = m.hp;
+            m.color = '#f97316';
+            m.contactDamage = 32;
+            m.gemValue = 35;
+          } else if (type === 'boss') {
+            m.radius = 42;
+            m.speed = 1.3;
+            m.hp = 350 + this.gameTime * 5;
+            m.maxHp = m.hp;
+            m.color = '#ef4444';
+            m.contactDamage = 45;
+            m.gemValue = 120;
+          }
+
+          this.monsters.push(m);
+        }
+      }
+
+      autoShootNearest() {
+        if (this.monsters.length === 0) return;
+
+        // Sort monsters by distance
+        const sorted = [...this.monsters].sort((a, b) => {
+          const distA = Math.hypot(a.x - this.player.x, a.y - this.player.y);
+          const distB = Math.hypot(b.x - this.player.x, b.y - this.player.y);
+          return distA - distB;
+        });
+
+        const target = sorted[0];
+        const baseAngle = Math.atan2(target.y - this.player.y, target.x - this.player.x);
+        this.player.facingAngle = baseAngle;
+
+        // Trigger Attack Sprite Animation
+        this.player.animState = 'attack';
+        this.player.attackAnimTimer = 260;
+        this.player.currentFrame = 0;
+        this.player.animTimer = 0;
+
+        const count = this.player.projectilesCount;
+        const spread = 0.18; // radian spread
+
+        for (let i = 0; i < count; i++) {
+          const offset = (i - (count - 1) / 2) * spread;
+          const angle = baseAngle + offset;
+          const speed = 12;
+
+          this.projectiles.push({
+            x: this.player.x,
+            y: this.player.y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            radius: 6,
+            damage: 25 * this.player.damageMultiplier,
+            pierce: this.player.pierceCount,
+            hitTargets: new Set(),
+            life: 1400,
+            color: '#38bdf8',
+            isCrit: Math.random() < 0.15
+          });
+        }
+
+        sound.playShoot();
+      }
+
+      updateOrbiters(dt) {
+        if (this.player.orbitersCount <= 0) return;
+        const count = this.player.orbitersCount;
+        const orbRadius = 65;
+        const baseAngle = (performance.now() / 350) % (Math.PI * 2);
+
+        for (let i = 0; i < count; i++) {
+          const angle = baseAngle + (i * Math.PI * 2 / count);
+          const ox = this.player.x + Math.cos(angle) * orbRadius;
+          const oy = this.player.y + Math.sin(angle) * orbRadius;
+
+          // Check collision with monsters
+          for (let j = 0; j < this.monsters.length; j++) {
+            const m = this.monsters[j];
+            const dist = Math.hypot(ox - m.x, oy - m.y);
+            if (dist < 14 + m.radius) {
+              this.damageMonster(m, 1.2 * this.player.damageMultiplier, false);
+              this.createImpactParticles(ox, oy, '#c084fc', 2);
+            }
+          }
+        }
+      }
+
+      castThunderStrike() {
+        if (this.monsters.length === 0) return;
+        const count = Math.min(this.player.thunderStrikes, this.monsters.length);
+        const shuffled = [...this.monsters].sort(() => 0.5 - Math.random());
+
+        for (let i = 0; i < count; i++) {
+          const target = shuffled[i];
+          if (!target) continue;
+
+          this.damageMonster(target, 60 * this.player.damageMultiplier, true);
+          sound.playThunder();
+
+          // Add visual lightning
+          this.thunderVisuals.push({
+            x: target.x,
+            y: target.y,
+            alpha: 1.0
+          });
+          this.createImpactParticles(target.x, target.y, '#fcd34d', 10);
+        }
+      }
+
+      damageMonster(monster, damage, isCrit) {
+        const finalDamage = isCrit ? damage * 1.8 : damage;
+        monster.hp -= finalDamage;
+
+        if (monster.type === 'slime') {
+          monster.hitTimer = 110;
+        }
+
+        // Floating Damage Number
+        this.floatingTexts.push({
+          x: monster.x + (Math.random() - 0.5) * 12,
+          y: monster.y - 14,
+          vy: -1.2,
+          text: Math.round(finalDamage),
+          color: isCrit ? '#fcd34d' : '#ffffff',
+          size: isCrit ? 18 : 13,
+          alpha: 1.0
+        });
+
+        if (monster.hp <= 0) {
+          this.killMonster(monster);
+        }
+      }
+
+      killMonster(monster) {
+        const idx = this.monsters.indexOf(monster);
+        if (idx !== -1) {
+          this.monsters.splice(idx, 1);
+          this.kills++;
+          this.updateHUD();
+
+          // If slime and monster image loaded, trigger dying animation
+          if (monster.type === 'slime' && this.monsterImageLoaded) {
+            this.dyingMonsters.push({
+              x: monster.x,
+              y: monster.y,
+              timer: 0,
+              frame: 0,
+              alpha: 1.0,
+              facingLeft: monster.facingLeft
+            });
+          }
+
+          // Drop EXP Gem
+          this.gems.push({
+            x: monster.x,
+            y: monster.y,
+            radius: monster.type === 'boss' ? 12 : 7,
+            val: monster.gemValue,
+            color: monster.type === 'boss' ? '#f59e0b' : (monster.type === 'golem' ? '#38bdf8' : '#c084fc')
+          });
+
+          // Monster death explosion particles
+          this.createImpactParticles(monster.x, monster.y, monster.color, 14);
+        }
+      }
+
+      createImpactParticles(x, y, color, count) {
+        for (let i = 0; i < count; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const speed = 1.5 + Math.random() * 3.5;
+          this.particles.push({
+            x: x,
+            y: y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            radius: 2 + Math.random() * 3,
+            color: color,
+            alpha: 1.0
+          });
+        }
+      }
+
+      triggerGameOver() {
+        this.isGameOver = true;
+        this.isPaused = true;
+        sound.playGameOver();
+
+        const minutes = Math.floor(this.gameTime / 60);
+        const seconds = Math.floor(this.gameTime % 60);
+        const timeStr = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+        document.getElementById('stat-time').innerText = timeStr;
+        document.getElementById('stat-level').innerText = `Lv.${this.level}`;
+        document.getElementById('stat-kills').innerText = `${this.kills} 마리`;
+        document.getElementById('stat-words').innerText = `${this.masteredVerbs.size} / ${verbList.length} 개`;
+
+        const modal = document.getElementById('gameover-modal');
+        modal.classList.add('active');
+      }
+
+      /* ==========================================================================
+         7. CANVAS RENDERING
+         ========================================================================== */
+      render() {
+        this.ctx.clearRect(0, 0, this.width, this.height);
+
+        this.ctx.save();
+        this.ctx.translate(-this.camera.x, -this.camera.y);
+
+        // 1. Grid Background
+        this.drawBackgroundGrid();
+
+        // 2. Render Gems
+        for (const g of this.gems) {
+          this.ctx.save();
+          this.ctx.translate(g.x, g.y);
+          this.ctx.rotate(performance.now() * 0.002);
+          this.ctx.fillStyle = g.color;
+          this.ctx.shadowColor = g.color;
+          this.ctx.shadowBlur = 10;
+
+          // Diamond shape
+          this.ctx.beginPath();
+          this.ctx.moveTo(0, -g.radius);
+          this.ctx.lineTo(g.radius, 0);
+          this.ctx.lineTo(0, g.radius);
+          this.ctx.lineTo(-g.radius, 0);
+          this.ctx.closePath();
+          this.ctx.fill();
+          this.ctx.restore();
+        }
+
+        // 2.5 Render Dying Monsters (Puddles & Spirit Smoke from monster1.png)
+        if (this.monsterImageLoaded) {
+          for (const dm of this.dyingMonsters) {
+            const frameInfo = this.monster1Config.deathFrames[dm.frame] || this.monster1Config.deathFrames[0];
+            this.ctx.save();
+            this.ctx.globalAlpha = dm.alpha;
+            this.ctx.translate(dm.x, dm.y);
+            if (dm.facingLeft) {
+              this.ctx.scale(-1, 1);
+            }
+
+            let dw = 50;
+            let dh = 46;
+            let offsetY = -4;
+
+            if (dm.frame === 1) {
+              dw = 58;
+              dh = 58;
+              offsetY = -12;
+            } else if (dm.frame === 2) {
+              dw = 64;
+              dh = 28;
+              offsetY = 10;
+            }
+
+            this.ctx.drawImage(this.monsterImage, frameInfo.x, frameInfo.y, frameInfo.w, frameInfo.h, -dw / 2, -dh / 2 + offsetY, dw, dh);
+            this.ctx.restore();
+          }
+        }
+
+        // 3. Render Monsters
+        for (const m of this.monsters) {
+          this.drawMonster(m);
+        }
+
+        // 4. Render Orbiters
+        if (this.player.orbitersCount > 0) {
+          const count = this.player.orbitersCount;
+          const orbRadius = 65;
+          const baseAngle = (performance.now() / 350) % (Math.PI * 2);
+
+          for (let i = 0; i < count; i++) {
+            const angle = baseAngle + (i * Math.PI * 2 / count);
+            const ox = this.player.x + Math.cos(angle) * orbRadius;
+            const oy = this.player.y + Math.sin(angle) * orbRadius;
+
+            this.ctx.save();
+            this.ctx.fillStyle = '#c084fc';
+            this.ctx.shadowColor = '#a855f7';
+            this.ctx.shadowBlur = 12;
+            this.ctx.beginPath();
+            this.ctx.arc(ox, oy, 8, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.restore();
+          }
+        }
+
+        // 5. Render Projectiles
+        for (const p of this.projectiles) {
+          this.ctx.save();
+          this.ctx.fillStyle = p.color;
+          this.ctx.shadowColor = p.color;
+          this.ctx.shadowBlur = 10;
+          this.ctx.beginPath();
+          this.ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+          this.ctx.fill();
+          this.ctx.restore();
+        }
+
+        // 6. Render Thunder Strikes
+        for (const th of this.thunderVisuals) {
+          this.ctx.save();
+          this.ctx.strokeStyle = `rgba(252, 211, 77, ${th.alpha})`;
+          this.ctx.shadowColor = '#fcd34d';
+          this.ctx.shadowBlur = 16;
+          this.ctx.lineWidth = 4;
+          this.ctx.beginPath();
+          this.ctx.moveTo(th.x - 20, th.y - 300);
+          this.ctx.lineTo(th.x + 10, th.y - 180);
+          this.ctx.lineTo(th.x - 15, th.y - 80);
+          this.ctx.lineTo(th.x, th.y);
+          this.ctx.stroke();
+
+          // Flash circle at impact
+          this.ctx.fillStyle = `rgba(252, 211, 77, ${th.alpha * 0.4})`;
+          this.ctx.beginPath();
+          this.ctx.arc(th.x, th.y, 35, 0, Math.PI * 2);
+          this.ctx.fill();
+          this.ctx.restore();
+        }
+
+        // 7. Render Player
+        this.drawPlayer();
+
+        // 8. Render Particles
+        for (const pt of this.particles) {
+          this.ctx.save();
+          this.ctx.globalAlpha = pt.alpha;
+          this.ctx.fillStyle = pt.color;
+          this.ctx.beginPath();
+          this.ctx.arc(pt.x, pt.y, pt.radius, 0, Math.PI * 2);
+          this.ctx.fill();
+          this.ctx.restore();
+        }
+
+        // 9. Render Floating Damage Numbers
+        for (const ft of this.floatingTexts) {
+          this.ctx.save();
+          this.ctx.globalAlpha = ft.alpha;
+          this.ctx.font = `900 ${ft.size}px 'Fredoka', 'Noto Sans KR'`;
+          this.ctx.fillStyle = ft.color;
+          this.ctx.strokeStyle = '#000000';
+          this.ctx.lineWidth = 3;
+          this.ctx.strokeText(ft.text, ft.x, ft.y);
+          this.ctx.fillText(ft.text, ft.x, ft.y);
+          this.ctx.restore();
+        }
+
+        this.ctx.restore();
+      }
+
+      drawBackgroundGrid() {
+        const gridSize = 80;
+        const startX = Math.floor(this.camera.x / gridSize) * gridSize;
+        const startY = Math.floor(this.camera.y / gridSize) * gridSize;
+        const endX = startX + this.width + gridSize;
+        const endY = startY + this.height + gridSize;
+
+        this.ctx.strokeStyle = 'rgba(56, 189, 248, 0.04)';
+        this.ctx.lineWidth = 1;
+
+        for (let x = startX; x <= endX; x += gridSize) {
+          this.ctx.beginPath();
+          this.ctx.moveTo(x, startY);
+          this.ctx.lineTo(x, endY);
+          this.ctx.stroke();
+        }
+        for (let y = startY; y <= endY; y += gridSize) {
+          this.ctx.beginPath();
+          this.ctx.moveTo(startX, y);
+          this.ctx.lineTo(endX, y);
+          this.ctx.stroke();
+        }
+
+        // Subtle cross markers
+        this.ctx.fillStyle = 'rgba(56, 189, 248, 0.12)';
+        for (let x = startX; x <= endX; x += gridSize * 2) {
+          for (let y = startY; y <= endY; y += gridSize * 2) {
+            this.ctx.fillRect(x - 2, y - 2, 4, 4);
+          }
+        }
+      }
+
+      drawPlayer() {
+        const p = this.player;
+
+        // Magnet range aura (very faint)
+        this.ctx.save();
+        this.ctx.strokeStyle = 'rgba(56, 189, 248, 0.08)';
+        this.ctx.lineWidth = 1.5;
+        this.ctx.setLineDash([4, 4]);
+        this.ctx.beginPath();
+        this.ctx.arc(p.x, p.y, p.magnetRadius, 0, Math.PI * 2);
+        this.ctx.stroke();
+        this.ctx.restore();
+
+        // Player Shadow
+        this.ctx.save();
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+        this.ctx.beginPath();
+        this.ctx.ellipse(p.x, p.y + 18, 20, 8, 0, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.ctx.restore();
+
+        // Player Body: Sprite Sheet or Vector Fallback
+        if (this.characterImageLoaded) {
+          const rowInfo = this.spriteConfig.rows[p.animState] || this.spriteConfig.rows.idle;
+          const colX = this.spriteConfig.cols[p.currentFrame % 5];
+          const sx = colX;
+          const sy = rowInfo.y;
+          const sw = this.spriteConfig.frameWidth;
+          const sh = rowInfo.h;
+
+          const dw = 76;
+          const dh = 76;
+          const flipX = Math.cos(p.facingAngle) < 0;
+
+          this.ctx.save();
+          this.ctx.translate(p.x, p.y);
+          if (flipX) {
+            this.ctx.scale(-1, 1);
+          }
+
+          // Draw the character sprite
+          this.ctx.drawImage(this.characterImage, sx, sy, sw, sh, -dw / 2, -dh / 2 - 8, dw, dh);
+          this.ctx.restore();
+        } else {
+          // Fallback Vector Hero
+          this.ctx.save();
+          this.ctx.translate(p.x, p.y);
+          const bob = Math.sin(p.walkCycle) * 2;
+          this.ctx.translate(0, bob);
+
+          this.ctx.fillStyle = '#0284c7';
+          this.ctx.beginPath();
+          this.ctx.arc(0, 0, p.radius, 0, Math.PI * 2);
+          this.ctx.fill();
+
+          this.ctx.fillStyle = '#38bdf8';
+          this.ctx.shadowColor = '#38bdf8';
+          this.ctx.shadowBlur = 8;
+          this.ctx.beginPath();
+          this.ctx.arc(0, -2, p.radius * 0.65, 0, Math.PI * 2);
+          this.ctx.fill();
+
+          this.ctx.fillStyle = '#ffffff';
+          this.ctx.beginPath();
+          this.ctx.arc(-2, -5, 3, 0, Math.PI * 2);
+          this.ctx.fill();
+
+          const gunDist = p.radius + 6;
+          const gx = Math.cos(p.facingAngle) * gunDist;
+          const gy = Math.sin(p.facingAngle) * gunDist;
+
+          this.ctx.strokeStyle = '#fcd34d';
+          this.ctx.lineWidth = 6;
+          this.ctx.lineCap = 'round';
+          this.ctx.beginPath();
+          this.ctx.moveTo(0, 0);
+          this.ctx.lineTo(gx, gy);
+          this.ctx.stroke();
+          this.ctx.restore();
+        }
+
+        // Player Health Bar Above Head
+        const barW = 44;
+        const barH = 6;
+        const hpPct = Math.max(0, p.hp / p.maxHp);
+
+        this.ctx.save();
+        this.ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+        this.ctx.fillRect(p.x - barW / 2, p.y - 34, barW, barH);
+
+        this.ctx.fillStyle = hpPct > 0.4 ? '#10b981' : (hpPct > 0.2 ? '#f59e0b' : '#ef4444');
+        this.ctx.fillRect(p.x - barW / 2, p.y - 34, barW * hpPct, barH);
+
+        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+        this.ctx.lineWidth = 1;
+        this.ctx.strokeRect(p.x - barW / 2, p.y - 34, barW, barH);
+        this.ctx.restore();
+      }
+
+      drawMonster(m) {
+        if (m.type === 'slime' && this.monsterImageLoaded) {
+          // Animated Slime from monster1.png
+          let frame;
+          let hopY = 0;
+          let dw = 48;
+          let dh = 48;
+
+          if (m.hitTimer > 0) {
+            // Hit frame with aura
+            frame = this.monster1Config.hitFrame;
+            dw = 54;
+            dh = 54;
+          } else {
+            // Hop cycle: 500ms
+            const cycle = (m.animTimer || 0) % 500;
+            if (cycle < 130) {
+              frame = this.monster1Config.moveFrames[0]; // Stand
+              hopY = 0;
+            } else if (cycle < 240) {
+              frame = this.monster1Config.moveFrames[1]; // Squish down
+              hopY = 2;
+              dw = 50;
+              dh = 44;
+            } else if (cycle < 400) {
+              frame = this.monster1Config.moveFrames[2]; // Leap in air
+              hopY = -14;
+              dw = 44;
+              dh = 58;
+            } else {
+              frame = this.monster1Config.moveFrames[3]; // Land flat
+              hopY = 3;
+              dw = 54;
+              dh = 44;
+            }
+          }
+
+          // Shadow (stays on the ground even when hopping!)
+          this.ctx.save();
+          this.ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+          this.ctx.beginPath();
+          const shadowScale = (hopY < -5) ? 0.75 : 1.0;
+          this.ctx.ellipse(m.x, m.y + 14, 16 * shadowScale, 7 * shadowScale, 0, 0, Math.PI * 2);
+          this.ctx.fill();
+          this.ctx.restore();
+
+          // Slime Sprite
+          this.ctx.save();
+          this.ctx.translate(m.x, m.y + hopY);
+          if (m.facingLeft) {
+            this.ctx.scale(-1, 1);
+          }
+          this.ctx.drawImage(this.monsterImage, frame.x, frame.y, frame.w, frame.h, -dw / 2, -dh / 2 - 2, dw, dh);
+          this.ctx.restore();
+
+          // Monster HP Bar (when damaged)
+          if (m.hp < m.maxHp) {
+            const bw = m.radius * 2;
+            const bh = 4;
+            const pct = Math.max(0, m.hp / m.maxHp);
+
+            this.ctx.save();
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            this.ctx.fillRect(m.x - bw / 2, m.y - m.radius - 10, bw, bh);
+
+            this.ctx.fillStyle = '#ef4444';
+            this.ctx.fillRect(m.x - bw / 2, m.y - m.radius - 10, bw * pct, bh);
+            this.ctx.restore();
+          }
+          return;
+        }
+
+        // Monster Shadow
+        this.ctx.save();
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+        this.ctx.beginPath();
+        this.ctx.ellipse(m.x, m.y + m.radius * 0.7, m.radius, m.radius * 0.4, 0, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.ctx.restore();
+
+        // Monster Body
+        this.ctx.save();
+        this.ctx.translate(m.x, m.y);
+
+        this.ctx.fillStyle = m.color;
+        this.ctx.shadowColor = m.color;
+        this.ctx.shadowBlur = 6;
+
+        if (m.type === 'bat') {
+          // Wing flapping
+          const wing = Math.sin(performance.now() * 0.015) * 8;
+          this.ctx.beginPath();
+          this.ctx.arc(0, 0, m.radius, 0, Math.PI * 2);
+          this.ctx.fill();
+          // Wings
+          this.ctx.fillStyle = '#7e22ce';
+          this.ctx.beginPath();
+          this.ctx.moveTo(-m.radius, 0);
+          this.ctx.lineTo(-m.radius - 12, wing);
+          this.ctx.lineTo(-m.radius, 6);
+          this.ctx.moveTo(m.radius, 0);
+          this.ctx.lineTo(m.radius + 12, wing);
+          this.ctx.lineTo(m.radius, 6);
+          this.ctx.fill();
+        } else if (m.type === 'golem') {
+          // Blocky hexagonal golem
+          this.ctx.beginPath();
+          for (let a = 0; a < 6; a++) {
+            const rad = a * Math.PI / 3;
+            const x = Math.cos(rad) * m.radius;
+            const y = Math.sin(rad) * m.radius;
+            if (a === 0) this.ctx.moveTo(x, y);
+            else this.ctx.lineTo(x, y);
+          }
+          this.ctx.closePath();
+          this.ctx.fill();
+        } else if (m.type === 'boss') {
+          // Spiky Boss Demon
+          this.ctx.beginPath();
+          this.ctx.arc(0, 0, m.radius, 0, Math.PI * 2);
+          this.ctx.fill();
+          // Horns
+          this.ctx.fillStyle = '#b91c1c';
+          this.ctx.beginPath();
+          this.ctx.moveTo(-16, -m.radius);
+          this.ctx.lineTo(-24, -m.radius - 16);
+          this.ctx.lineTo(-6, -m.radius + 4);
+          this.ctx.moveTo(16, -m.radius);
+          this.ctx.lineTo(24, -m.radius - 16);
+          this.ctx.lineTo(6, -m.radius + 4);
+          this.ctx.fill();
+        } else {
+          // Slime
+          this.ctx.beginPath();
+          this.ctx.arc(0, 0, m.radius, 0, Math.PI * 2);
+          this.ctx.fill();
+        }
+
+        // Eyes
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.beginPath();
+        this.ctx.arc(-m.radius * 0.35, -m.radius * 0.2, m.radius * 0.22, 0, Math.PI * 2);
+        this.ctx.arc(m.radius * 0.35, -m.radius * 0.2, m.radius * 0.22, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        this.ctx.fillStyle = '#000000';
+        this.ctx.beginPath();
+        this.ctx.arc(-m.radius * 0.35, -m.radius * 0.2, m.radius * 0.1, 0, Math.PI * 2);
+        this.ctx.arc(m.radius * 0.35, -m.radius * 0.2, m.radius * 0.1, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        this.ctx.restore();
+
+        // Monster HP Bar (for Golem / Boss or wounded)
+        if (m.hp < m.maxHp || m.type === 'boss' || m.type === 'golem') {
+          const bw = m.radius * 2;
+          const bh = 4;
+          const pct = Math.max(0, m.hp / m.maxHp);
+
+          this.ctx.save();
+          this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+          this.ctx.fillRect(m.x - bw / 2, m.y - m.radius - 8, bw, bh);
+
+          this.ctx.fillStyle = '#ef4444';
+          this.ctx.fillRect(m.x - bw / 2, m.y - m.radius - 8, bw * pct, bh);
+          this.ctx.restore();
+        }
+      }
+    }
+
+    // Launch Game instance when page loads
+    window.addEventListener('DOMContentLoaded', () => {
+      const game = new Game();
+      game.start();
+    });
+  </script>
+</body>
+</html>
