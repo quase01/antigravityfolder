@@ -1322,7 +1322,7 @@
           x: 0,
           y: 0,
           radius: 18,
-          speed: 3.6,
+          speed: 5.4,
           hp: 120,
           maxHp: 120,
           // Sprite Animation States
@@ -2069,7 +2069,7 @@
       }
 
       spawnMonsterWave() {
-        const count = Math.min(14, 2 + Math.floor(this.gameTime / 25));
+        const count = Math.min(9, 2 + Math.floor(this.gameTime / 30));
         const distance = Math.max(this.width, this.height) / 2 + 80;
 
         for (let i = 0; i < count; i++) {
