@@ -1392,16 +1392,19 @@
             if (e.key === '1' && this.activePowerupChoices[0]) {
               this.activePowerupChoices[0].apply(this);
               sound.playGem();
+              this.announceUpgrade(this.activePowerupChoices[0]);
               this.closeQuizModal();
               return;
             } else if (e.key === '2' && this.activePowerupChoices[1]) {
               this.activePowerupChoices[1].apply(this);
               sound.playGem();
+              this.announceUpgrade(this.activePowerupChoices[1]);
               this.closeQuizModal();
               return;
             } else if (e.key === '3' && this.activePowerupChoices[2]) {
               this.activePowerupChoices[2].apply(this);
               sound.playGem();
+              this.announceUpgrade(this.activePowerupChoices[2]);
               this.closeQuizModal();
               return;
             }
@@ -1627,6 +1630,19 @@
         }
       }
 
+      announceUpgrade(p) {
+        this.floatingTexts.push({
+          x: this.player.x,
+          y: this.player.y - 48,
+          vy: -0.5,
+          decay: 0.008,
+          text: `${p.icon} ${p.name} 강화!`,
+          color: '#fcd34d',
+          size: 22,
+          alpha: 1.0
+        });
+      }
+
       showPowerupCards() {
         const powerupSec = document.getElementById('powerup-section');
         const container = document.getElementById('powerup-cards-container');
@@ -1652,6 +1668,7 @@
           card.addEventListener('click', () => {
             p.apply(this);
             sound.playGem();
+            this.announceUpgrade(p);
             this.closeQuizModal();
           });
           container.appendChild(card);
@@ -2058,7 +2075,7 @@
         for (let i = this.floatingTexts.length - 1; i >= 0; i--) {
           const ft = this.floatingTexts[i];
           ft.y += ft.vy;
-          ft.alpha -= 0.02;
+          ft.alpha -= (ft.decay || 0.02);
           if (ft.alpha <= 0) this.floatingTexts.splice(i, 1);
         }
 
