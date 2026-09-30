@@ -1083,9 +1083,97 @@
         id: "pierce",
         name: "관통 탄환",
         desc: "발사체가 적을 관통하는 횟수 +1회",
-        icon: "🎯",
+        icon: "🗡️",
         tier: "Attack",
         apply: (game) => { game.player.pierceCount += 1; }
+      },
+      {
+        id: "critchance",
+        name: "치명타 확률 증가",
+        desc: "공격이 치명타로 적중할 확률 +15%",
+        icon: "🎯",
+        tier: "Attack",
+        apply: (game) => { game.player.critChance = Math.min(0.9, game.player.critChance + 0.15); }
+      },
+      {
+        id: "range",
+        name: "사거리 강화",
+        desc: "발사체 속도와 사거리 +25%",
+        icon: "🔭",
+        tier: "Attack",
+        apply: (game) => { game.player.rangeMultiplier += 0.25; }
+      },
+      {
+        id: "cooldown_all",
+        name: "보조 스킬 쿨타임 감소",
+        desc: "번개/화염/지뢰/화살/부메랑 재사용 대기시간 -15%",
+        icon: "⏱️",
+        tier: "Utility",
+        apply: (game) => { game.player.abilityCooldownMultiplier = Math.max(0.4, game.player.abilityCooldownMultiplier * 0.85); }
+      },
+      {
+        id: "expgain",
+        name: "경험치 획득량 증가",
+        desc: "몬스터 처치 시 획득 경험치 +25%",
+        icon: "🌟",
+        tier: "Utility",
+        apply: (game) => { game.player.expMultiplier += 0.25; }
+      },
+      {
+        id: "damage_reduction",
+        name: "피해 감소",
+        desc: "몬스터 접촉 피해 -15%",
+        icon: "🛡️",
+        tier: "Survival",
+        apply: (game) => { game.player.damageReduction = Math.min(0.7, game.player.damageReduction + 0.15); }
+      },
+      {
+        id: "hp_regen",
+        name: "체력 재생",
+        desc: "초당 체력 자동 회복 +1.2",
+        icon: "❤️‍🩹",
+        tier: "Survival",
+        apply: (game) => { game.player.hpRegen += 1.2; }
+      },
+      {
+        id: "revive",
+        name: "불사조의 깃털",
+        desc: "치명적인 피해를 받아도 1회 부활 (HP 50% 회복)",
+        icon: "🕊️",
+        tier: "Survival",
+        apply: (game) => { game.player.hasRevive = true; }
+      },
+      {
+        id: "homing_arrow",
+        name: "추적하는 화살",
+        desc: "가장 가까운 적을 끝없이 추적하는 관통 화살 소환",
+        icon: "🛰️",
+        tier: "Active",
+        apply: (game) => { game.player.arrowCount += 1; game.addHomingArrow(); }
+      },
+      {
+        id: "fire_pool",
+        name: "화염 장판",
+        desc: "주기적으로 적진에 불타는 장판을 떨어뜨려 지속 피해",
+        icon: "🔥",
+        tier: "Active",
+        apply: (game) => { game.player.firePoolCount += 1; }
+      },
+      {
+        id: "mine",
+        name: "폭발 지뢰",
+        desc: "주기적으로 지뢰를 설치해 접근하는 적을 폭파",
+        icon: "💣",
+        tier: "Active",
+        apply: (game) => { game.player.mineCount += 1; }
+      },
+      {
+        id: "boomerang",
+        name: "부메랑",
+        desc: "적을 향해 부메랑을 던져 왕복하며 2번 타격",
+        icon: "🪃",
+        tier: "Active",
+        apply: (game) => { game.player.boomerangCount += 1; }
       }
     ];
 
@@ -1130,6 +1218,10 @@
         this.particles = [];
         this.floatingTexts = [];
         this.thunderVisuals = [];
+        this.arrows = [];
+        this.firePools = [];
+        this.mines = [];
+        this.boomerangs = [];
 
         // Character Sprite Sheet (from character.png)
         this.characterImage = new Image();
@@ -1174,6 +1266,30 @@
           ]
         };
 
+        // Monster2 (Golem / Crab) Sprite Sheet (from monster2.png)
+        this.monster2Image = new Image();
+        this.monster2ImageLoaded = false;
+        this.monster2Image.onload = () => {
+          this.monster2ImageLoaded = true;
+        };
+        this.monster2Image.src = 'monster2.png';
+
+        // Monster2 frames layout (Scuttle walk, Hit with CRACK, and Defeat with pop & cracked shell)
+        this.monster2Config = {
+          moveFrames: [
+            { x: 32, y: 265, w: 288, h: 206 },
+            { x: 414, y: 261, w: 267, h: 211 },
+            { x: 764, y: 257, w: 231, h: 218 },
+            { x: 1081, y: 265, w: 289, h: 206 }
+          ],
+          hitFrame: { x: 37, y: 712, w: 291, h: 277 },
+          deathFrames: [
+            { x: 371, y: 777, w: 304, h: 210, dur: 160 }, // Shaking cracked shell
+            { x: 728, y: 724, w: 294, h: 266, dur: 200 }, // Explosion pop with "펑!"
+            { x: 1079, y: 795, w: 292, h: 206, dur: 450 }  // Defeated shell "x_x"
+          ]
+        };
+
         this.dyingMonsters = [];
 
         // Timers & Spawn
@@ -1181,6 +1297,9 @@
         this.monsterSpawnInterval = 1000; // ms
         this.attackTimer = 0;
         this.thunderTimer = 0;
+        this.firePoolTimer = 0;
+        this.mineTimer = 0;
+        this.boomerangTimer = 0;
 
         // Input
         this.keys = {};
@@ -1204,8 +1323,8 @@
           y: 0,
           radius: 18,
           speed: 3.6,
-          hp: 100,
-          maxHp: 100,
+          hp: 120,
+          maxHp: 120,
           // Sprite Animation States
           animState: 'idle', // 'idle' | 'walk' | 'attack'
           currentFrame: 0,
@@ -1220,7 +1339,21 @@
           thunderStrikes: 0,
           magnetRadius: 110,
           facingAngle: 0,
-          walkCycle: 0
+          walkCycle: 0,
+          // Diversified stats (support-item style)
+          critChance: 0.15,
+          critMultiplier: 1.8,
+          rangeMultiplier: 1.0,
+          abilityCooldownMultiplier: 1.0,
+          expMultiplier: 1.0,
+          damageReduction: 0,
+          hpRegen: 0.5,
+          hasRevive: false,
+          // Diversified active skills (weapon-style)
+          arrowCount: 0,
+          firePoolCount: 0,
+          mineCount: 0,
+          boomerangCount: 0
         };
 
         this.monsters = [];
@@ -1229,6 +1362,17 @@
         this.particles = [];
         this.floatingTexts = [];
         this.thunderVisuals = [];
+        this.arrows = [];
+        this.firePools = [];
+        this.mines = [];
+        this.boomerangs = [];
+
+        this.monsterSpawnTimer = 0;
+        this.attackTimer = 0;
+        this.thunderTimer = 0;
+        this.firePoolTimer = 0;
+        this.mineTimer = 0;
+        this.boomerangTimer = 0;
 
         this.monsterSpawnInterval = 900;
         this.updateHUD();
@@ -1476,8 +1620,8 @@
 
           // Resume after 1.6s
           setTimeout(() => {
-            // Give tiny emergency consolation heal (10% HP)
-            this.player.hp = Math.min(this.player.maxHp, this.player.hp + this.player.maxHp * 0.1);
+            // Give tiny emergency consolation heal (15% HP)
+            this.player.hp = Math.min(this.player.maxHp, this.player.hp + this.player.maxHp * 0.15);
             this.closeQuizModal();
           }, 1600);
         }
@@ -1570,7 +1714,37 @@
           tray.innerHTML += `<div class="skill-badge" title="낙뢰 공격">🌩️<span>${this.player.thunderStrikes}</span></div>`;
         }
         if (this.player.pierceCount > 1) {
-          tray.innerHTML += `<div class="skill-badge" title="관통 탄환">🎯<span>${this.player.pierceCount}</span></div>`;
+          tray.innerHTML += `<div class="skill-badge" title="관통 탄환">🗡️<span>${this.player.pierceCount}</span></div>`;
+        }
+        if (this.player.critChance > 0.15) {
+          tray.innerHTML += `<div class="skill-badge" title="치명타 확률">🎯<span>${Math.round(this.player.critChance * 100)}%</span></div>`;
+        }
+        if (this.player.rangeMultiplier > 1) {
+          tray.innerHTML += `<div class="skill-badge" title="사거리 강화">🔭<span>+${Math.round((this.player.rangeMultiplier - 1) * 100)}%</span></div>`;
+        }
+        if (this.player.expMultiplier > 1) {
+          tray.innerHTML += `<div class="skill-badge" title="경험치 증가">🌟<span>+${Math.round((this.player.expMultiplier - 1) * 100)}%</span></div>`;
+        }
+        if (this.player.damageReduction > 0) {
+          tray.innerHTML += `<div class="skill-badge" title="피해 감소">🛡️<span>-${Math.round(this.player.damageReduction * 100)}%</span></div>`;
+        }
+        if (this.player.hpRegen > 0.5) {
+          tray.innerHTML += `<div class="skill-badge" title="체력 재생">❤️‍🩹<span>${this.player.hpRegen.toFixed(1)}</span></div>`;
+        }
+        if (this.player.hasRevive) {
+          tray.innerHTML += `<div class="skill-badge" title="불사조의 깃털">🕊️<span>1</span></div>`;
+        }
+        if (this.player.arrowCount > 0) {
+          tray.innerHTML += `<div class="skill-badge" title="추적하는 화살">🛰️<span>${this.player.arrowCount}</span></div>`;
+        }
+        if (this.player.firePoolCount > 0) {
+          tray.innerHTML += `<div class="skill-badge" title="화염 장판">🔥<span>${this.player.firePoolCount}</span></div>`;
+        }
+        if (this.player.mineCount > 0) {
+          tray.innerHTML += `<div class="skill-badge" title="폭발 지뢰">💣<span>${this.player.mineCount}</span></div>`;
+        }
+        if (this.player.boomerangCount > 0) {
+          tray.innerHTML += `<div class="skill-badge" title="부메랑">🪃<span>${this.player.boomerangCount}</span></div>`;
         }
       }
 
@@ -1667,6 +1841,11 @@
         this.camera.x = this.player.x - this.width / 2;
         this.camera.y = this.player.y - this.height / 2;
 
+        // 1.5 Passive HP Regeneration
+        if (this.player.hpRegen > 0 && this.player.hp > 0 && this.player.hp < this.player.maxHp) {
+          this.player.hp = Math.min(this.player.maxHp, this.player.hp + this.player.hpRegen * (dt / 1000));
+        }
+
         // 2. Monster Spawning
         this.monsterSpawnTimer += dt;
         if (this.monsterSpawnTimer > this.monsterSpawnInterval) {
@@ -1692,6 +1871,42 @@
 
         // 5. Update Orbiters
         this.updateOrbiters(dt);
+
+        // 5.1 Homing Arrow Skill (persistent, always tracking)
+        this.updateHomingArrows(dt);
+
+        // 5.2 Fire Pool Skill
+        if (this.player.firePoolCount > 0) {
+          this.firePoolTimer += dt;
+          const interval = 3200 * this.player.abilityCooldownMultiplier;
+          if (this.firePoolTimer >= interval) {
+            this.firePoolTimer = 0;
+            this.spawnFirePool();
+          }
+        }
+        this.updateFirePools(dt);
+
+        // 5.3 Mine Skill
+        if (this.player.mineCount > 0) {
+          this.mineTimer += dt;
+          const interval = 2200 * this.player.abilityCooldownMultiplier;
+          if (this.mineTimer >= interval) {
+            this.mineTimer = 0;
+            this.spawnMine();
+          }
+        }
+        this.updateMines(dt);
+
+        // 5.4 Boomerang Skill
+        if (this.player.boomerangCount > 0) {
+          this.boomerangTimer += dt;
+          const interval = 1800 * this.player.abilityCooldownMultiplier;
+          if (this.boomerangTimer >= interval) {
+            this.boomerangTimer = 0;
+            this.spawnBoomerang();
+          }
+        }
+        this.updateBoomerangs(dt);
 
         // 6. Update Projectiles
         for (let i = this.projectiles.length - 1; i >= 0; i--) {
@@ -1737,7 +1952,7 @@
             m.y += (dy / dist) * m.speed;
           }
 
-          if (m.type === 'slime') {
+          if (m.type === 'slime' || m.type === 'golem') {
             m.animTimer = (m.animTimer || 0) + dt;
             m.facingLeft = (this.player.x < m.x);
             if (m.hitTimer > 0) {
@@ -1747,29 +1962,56 @@
 
           // Damage player on contact
           if (dist < m.radius + this.player.radius) {
-            this.player.hp -= m.contactDamage * (dt / 1000);
+            this.player.hp -= m.contactDamage * (1 - this.player.damageReduction) * (dt / 1000);
             if (this.player.hp <= 0) {
-              this.triggerGameOver();
-              return;
+              if (this.player.hasRevive) {
+                this.player.hasRevive = false;
+                this.player.hp = this.player.maxHp * 0.5;
+                sound.playLevelUp();
+                this.floatingTexts.push({
+                  x: this.player.x, y: this.player.y - 30, vy: -1.4,
+                  text: '부활!', color: '#fcd34d', size: 22, alpha: 1.0
+                });
+                this.createImpactParticles(this.player.x, this.player.y, '#fcd34d', 20);
+                this.updateHUD();
+              } else {
+                this.triggerGameOver();
+                return;
+              }
             }
           }
         }
 
-        // 7.1 Update Dying Monsters (Slime death sequence from monster1.png)
+        // 7.1 Update Dying Monsters (Slime death sequence & Crab defeat sequence)
         for (let i = this.dyingMonsters.length - 1; i >= 0; i--) {
           const dm = this.dyingMonsters[i];
           dm.timer += dt;
-          if (dm.timer < 140) {
-            dm.frame = 0; // Deflated sigh
-          } else if (dm.timer < 320) {
-            dm.frame = 1; // Smoke puff explosion
-          } else {
-            dm.frame = 2; // Melted puddle
-            dm.alpha = Math.max(0, 1 - (dm.timer - 320) / 380);
-          }
+          if (dm.type === 'golem') {
+            if (dm.timer < 160) {
+              dm.frame = 0; // Shaking cracked shell
+            } else if (dm.timer < 360) {
+              dm.frame = 1; // Pop / explosion with "펑!"
+            } else {
+              dm.frame = 2; // Broken shell "x_x" on the ground
+              dm.alpha = Math.max(0, 1 - (dm.timer - 360) / 450);
+            }
 
-          if (dm.timer >= 700) {
-            this.dyingMonsters.splice(i, 1);
+            if (dm.timer >= 810) {
+              this.dyingMonsters.splice(i, 1);
+            }
+          } else {
+            if (dm.timer < 140) {
+              dm.frame = 0; // Deflated sigh
+            } else if (dm.timer < 320) {
+              dm.frame = 1; // Smoke puff explosion
+            } else {
+              dm.frame = 2; // Melted puddle
+              dm.alpha = Math.max(0, 1 - (dm.timer - 320) / 380);
+            }
+
+            if (dm.timer >= 700) {
+              this.dyingMonsters.splice(i, 1);
+            }
           }
         }
 
@@ -1787,7 +2029,7 @@
           }
 
           if (dist < this.player.radius + g.radius) {
-            this.exp += g.val;
+            this.exp += g.val * this.player.expMultiplier;
             sound.playGem();
             this.gems.splice(i, 1);
 
@@ -1827,7 +2069,7 @@
       }
 
       spawnMonsterWave() {
-        const count = Math.min(14, 2 + Math.floor(this.gameTime / 20));
+        const count = Math.min(14, 2 + Math.floor(this.gameTime / 25));
         const distance = Math.max(this.width, this.height) / 2 + 80;
 
         for (let i = 0; i < count; i++) {
@@ -1838,9 +2080,9 @@
           const roll = Math.random();
           let type = 'slime';
 
-          if (this.gameTime > 50 && roll < 0.2) {
+          if (this.gameTime > 5 && roll < 0.35) {
             type = 'golem';
-          } else if (this.gameTime > 25 && roll < 0.5) {
+          } else if (this.gameTime > 15 && roll < 0.5) {
             type = 'bat';
           }
 
@@ -1854,10 +2096,10 @@
             x: spawnX,
             y: spawnY,
             radius: 18,
-            hp: 20 + this.gameTime * 0.8,
-            maxHp: 20 + this.gameTime * 0.8,
+            hp: 20 + this.gameTime * 0.65,
+            maxHp: 20 + this.gameTime * 0.65,
             speed: 1.8 + Math.random() * 0.4,
-            contactDamage: 18,
+            contactDamage: 14,
             color: '#c084fc',
             gemValue: 12,
             animTimer: Math.random() * 500,
@@ -1878,7 +2120,7 @@
             m.hp *= 2.8;
             m.maxHp = m.hp;
             m.color = '#f97316';
-            m.contactDamage = 32;
+            m.contactDamage = 26;
             m.gemValue = 35;
           } else if (type === 'boss') {
             m.radius = 42;
@@ -1886,7 +2128,7 @@
             m.hp = 350 + this.gameTime * 5;
             m.maxHp = m.hp;
             m.color = '#ef4444';
-            m.contactDamage = 45;
+            m.contactDamage = 38;
             m.gemValue = 120;
           }
 
@@ -1920,7 +2162,7 @@
         for (let i = 0; i < count; i++) {
           const offset = (i - (count - 1) / 2) * spread;
           const angle = baseAngle + offset;
-          const speed = 12;
+          const speed = 12 * this.player.rangeMultiplier;
 
           this.projectiles.push({
             x: this.player.x,
@@ -1931,9 +2173,9 @@
             damage: 25 * this.player.damageMultiplier,
             pierce: this.player.pierceCount,
             hitTargets: new Set(),
-            life: 1400,
+            life: 1400 * this.player.rangeMultiplier,
             color: '#38bdf8',
-            isCrit: Math.random() < 0.15
+            isCrit: Math.random() < this.player.critChance
           });
         }
 
@@ -1985,12 +2227,236 @@
         }
       }
 
+      findNearestMonster(x, y) {
+        let nearest = null;
+        let minDist = Infinity;
+        for (const m of this.monsters) {
+          const d = Math.hypot(m.x - x, m.y - y);
+          if (d < minDist) {
+            minDist = d;
+            nearest = m;
+          }
+        }
+        return nearest;
+      }
+
+      /* --- Homing Arrow: persistent tracking projectile (휘파람 화살 오마주) --- */
+      addHomingArrow() {
+        this.arrows.push({
+          x: this.player.x,
+          y: this.player.y,
+          vx: 0,
+          vy: 0,
+          radius: 7,
+          target: null,
+          hitCooldowns: new Map()
+        });
+      }
+
+      updateHomingArrows(dt) {
+        for (const arrow of this.arrows) {
+          if (!arrow.target || !this.monsters.includes(arrow.target)) {
+            arrow.target = this.findNearestMonster(arrow.x, arrow.y);
+          }
+
+          if (arrow.target) {
+            const dx = arrow.target.x - arrow.x;
+            const dy = arrow.target.y - arrow.y;
+            const dist = Math.hypot(dx, dy);
+            const speed = 7.5 * this.player.rangeMultiplier;
+
+            if (dist > 1) {
+              arrow.vx = (dx / dist) * speed;
+              arrow.vy = (dy / dist) * speed;
+            }
+            arrow.x += arrow.vx;
+            arrow.y += arrow.vy;
+
+            if (dist < arrow.radius + arrow.target.radius) {
+              const lastHit = arrow.hitCooldowns.get(arrow.target) || 0;
+              if (performance.now() - lastHit > 550) {
+                this.damageMonster(arrow.target, 16 * this.player.damageMultiplier, Math.random() < this.player.critChance);
+                arrow.hitCooldowns.set(arrow.target, performance.now());
+                this.createImpactParticles(arrow.x, arrow.y, '#7dd3fc', 3);
+                sound.playHit();
+                if (Math.random() < 0.4) arrow.target = null; // spread hits across the swarm
+              }
+            }
+          } else {
+            // No target: gently drift back near the player
+            arrow.x += (this.player.x - arrow.x) * 0.05;
+            arrow.y += (this.player.y - arrow.y) * 0.05;
+          }
+        }
+      }
+
+      /* --- Fire Pool: periodic burning zone (화염병/기름통 오마주) --- */
+      spawnFirePool() {
+        let cx = this.player.x + (Math.random() - 0.5) * 160;
+        let cy = this.player.y + (Math.random() - 0.5) * 160;
+
+        if (this.monsters.length > 0) {
+          const target = this.monsters[Math.floor(Math.random() * this.monsters.length)];
+          cx = target.x;
+          cy = target.y;
+        }
+
+        this.firePools.push({
+          x: cx,
+          y: cy,
+          radius: 55 + this.player.firePoolCount * 8,
+          life: 3200,
+          tickTimer: 0
+        });
+      }
+
+      updateFirePools(dt) {
+        for (let i = this.firePools.length - 1; i >= 0; i--) {
+          const fp = this.firePools[i];
+          fp.life -= dt;
+          fp.tickTimer += dt;
+
+          if (fp.tickTimer >= 280) {
+            fp.tickTimer = 0;
+            for (const m of this.monsters) {
+              const dist = Math.hypot(m.x - fp.x, m.y - fp.y);
+              if (dist < fp.radius + m.radius) {
+                this.damageMonster(m, 9 * this.player.damageMultiplier, false);
+              }
+            }
+            if (Math.random() < 0.6) {
+              this.createImpactParticles(
+                fp.x + (Math.random() - 0.5) * fp.radius,
+                fp.y + (Math.random() - 0.5) * fp.radius,
+                '#f97316', 2
+              );
+            }
+          }
+
+          if (fp.life <= 0) this.firePools.splice(i, 1);
+        }
+      }
+
+      /* --- Mine: proximity-triggered explosive (모듈형 지뢰 오마주) --- */
+      spawnMine() {
+        const count = this.player.mineCount;
+        for (let i = 0; i < count; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const dist = 40 + Math.random() * 50;
+          this.mines.push({
+            x: this.player.x + Math.cos(angle) * dist,
+            y: this.player.y + Math.sin(angle) * dist,
+            radius: 12,
+            triggerRadius: 34,
+            life: 9000
+          });
+        }
+      }
+
+      updateMines(dt) {
+        for (let i = this.mines.length - 1; i >= 0; i--) {
+          const mine = this.mines[i];
+          mine.life -= dt;
+
+          let triggered = false;
+          for (const m of this.monsters) {
+            const dist = Math.hypot(m.x - mine.x, m.y - mine.y);
+            if (dist < mine.triggerRadius + m.radius) {
+              triggered = true;
+              break;
+            }
+          }
+
+          if (triggered) {
+            const blastRadius = 75;
+            for (const m of this.monsters) {
+              const dist = Math.hypot(m.x - mine.x, m.y - mine.y);
+              if (dist < blastRadius + m.radius) {
+                this.damageMonster(m, 45 * this.player.damageMultiplier, true);
+              }
+            }
+            this.createImpactParticles(mine.x, mine.y, '#ef4444', 16);
+            sound.playThunder();
+            this.mines.splice(i, 1);
+            continue;
+          }
+
+          if (mine.life <= 0) this.mines.splice(i, 1);
+        }
+      }
+
+      /* --- Boomerang: out-and-back projectile (부메랑 오마주) --- */
+      spawnBoomerang() {
+        const target = this.findNearestMonster(this.player.x, this.player.y);
+        const count = this.player.boomerangCount;
+        const baseAngle = target
+          ? Math.atan2(target.y - this.player.y, target.x - this.player.x)
+          : this.player.facingAngle;
+
+        for (let i = 0; i < count; i++) {
+          const angle = baseAngle + (i - (count - 1) / 2) * 0.35;
+          this.boomerangs.push({
+            x: this.player.x,
+            y: this.player.y,
+            vx: Math.cos(angle) * 9,
+            vy: Math.sin(angle) * 9,
+            traveled: 0,
+            maxDist: 220,
+            returning: false,
+            radius: 9,
+            hitTargets: new Set(),
+            rotation: 0
+          });
+        }
+      }
+
+      updateBoomerangs(dt) {
+        for (let i = this.boomerangs.length - 1; i >= 0; i--) {
+          const b = this.boomerangs[i];
+          b.rotation += 0.3;
+
+          if (!b.returning) {
+            b.x += b.vx;
+            b.y += b.vy;
+            b.traveled += Math.hypot(b.vx, b.vy);
+            if (b.traveled >= b.maxDist * this.player.rangeMultiplier) {
+              b.returning = true;
+              b.hitTargets.clear();
+            }
+          } else {
+            const dx = this.player.x - b.x;
+            const dy = this.player.y - b.y;
+            const dist = Math.hypot(dx, dy);
+            const speed = 11;
+            if (dist > 1) {
+              b.x += (dx / dist) * speed;
+              b.y += (dy / dist) * speed;
+            }
+            if (dist < this.player.radius + 6) {
+              this.boomerangs.splice(i, 1);
+              continue;
+            }
+          }
+
+          for (const m of this.monsters) {
+            if (b.hitTargets.has(m)) continue;
+            const dist = Math.hypot(b.x - m.x, b.y - m.y);
+            if (dist < b.radius + m.radius) {
+              b.hitTargets.add(m);
+              this.damageMonster(m, 20 * this.player.damageMultiplier, Math.random() < this.player.critChance);
+              this.createImpactParticles(b.x, b.y, '#fcd34d', 4);
+              sound.playHit();
+            }
+          }
+        }
+      }
+
       damageMonster(monster, damage, isCrit) {
-        const finalDamage = isCrit ? damage * 1.8 : damage;
+        const finalDamage = isCrit ? damage * this.player.critMultiplier : damage;
         monster.hp -= finalDamage;
 
-        if (monster.type === 'slime') {
-          monster.hitTimer = 110;
+        if (monster.type === 'slime' || monster.type === 'golem') {
+          monster.hitTimer = 130;
         }
 
         // Floating Damage Number
@@ -2016,9 +2482,20 @@
           this.kills++;
           this.updateHUD();
 
-          // If slime and monster image loaded, trigger dying animation
+          // If slime or golem and monster image loaded, trigger dying animation
           if (monster.type === 'slime' && this.monsterImageLoaded) {
             this.dyingMonsters.push({
+              type: 'slime',
+              x: monster.x,
+              y: monster.y,
+              timer: 0,
+              frame: 0,
+              alpha: 1.0,
+              facingLeft: monster.facingLeft
+            });
+          } else if (monster.type === 'golem' && this.monster2ImageLoaded) {
+            this.dyingMonsters.push({
+              type: 'golem',
               x: monster.x,
               y: monster.y,
               timer: 0,
@@ -2034,7 +2511,7 @@
             y: monster.y,
             radius: monster.type === 'boss' ? 12 : 7,
             val: monster.gemValue,
-            color: monster.type === 'boss' ? '#f59e0b' : (monster.type === 'golem' ? '#38bdf8' : '#c084fc')
+            color: monster.type === 'boss' ? '#f59e0b' : (monster.type === 'golem' ? '#f97316' : '#c084fc')
           });
 
           // Monster death explosion particles
@@ -2108,9 +2585,28 @@
           this.ctx.restore();
         }
 
-        // 2.5 Render Dying Monsters (Puddles & Spirit Smoke from monster1.png)
-        if (this.monsterImageLoaded) {
-          for (const dm of this.dyingMonsters) {
+        // 2.5 Render Dying Monsters (Puddles & Spirit Smoke from monster1.png / Crab defeat from monster2.png)
+        for (const dm of this.dyingMonsters) {
+          if (dm.type === 'golem' && this.monster2ImageLoaded) {
+            const frameInfo = this.monster2Config.deathFrames[dm.frame] || this.monster2Config.deathFrames[0];
+            const scale = 0.26;
+            const dw = frameInfo.w * scale;
+            const dh = frameInfo.h * scale;
+            const footY = 16;
+
+            this.ctx.save();
+            this.ctx.globalAlpha = dm.alpha;
+            this.ctx.translate(dm.x, dm.y);
+            if (dm.facingLeft) {
+              this.ctx.scale(-1, 1);
+            }
+            let shudderX = 0;
+            if (dm.frame === 0) {
+              shudderX = (Math.random() - 0.5) * 4;
+            }
+            this.ctx.drawImage(this.monster2Image, frameInfo.x, frameInfo.y, frameInfo.w, frameInfo.h, -dw / 2 + shudderX, footY - dh, dw, dh);
+            this.ctx.restore();
+          } else if (this.monsterImageLoaded) {
             const frameInfo = this.monster1Config.deathFrames[dm.frame] || this.monster1Config.deathFrames[0];
             this.ctx.save();
             this.ctx.globalAlpha = dm.alpha;
@@ -2136,6 +2632,43 @@
             this.ctx.drawImage(this.monsterImage, frameInfo.x, frameInfo.y, frameInfo.w, frameInfo.h, -dw / 2, -dh / 2 + offsetY, dw, dh);
             this.ctx.restore();
           }
+        }
+
+        // 2.6 Render Fire Pools (ground effect)
+        for (const fp of this.firePools) {
+          this.ctx.save();
+          this.ctx.globalAlpha = 0.35;
+          this.ctx.fillStyle = '#f97316';
+          this.ctx.beginPath();
+          this.ctx.arc(fp.x, fp.y, fp.radius, 0, Math.PI * 2);
+          this.ctx.fill();
+          this.ctx.globalAlpha = 0.7;
+          this.ctx.strokeStyle = '#fcd34d';
+          this.ctx.lineWidth = 2;
+          this.ctx.setLineDash([6, 4]);
+          this.ctx.stroke();
+          this.ctx.restore();
+        }
+
+        // 2.7 Render Mines (ground effect)
+        for (const mine of this.mines) {
+          const blink = Math.sin(performance.now() * 0.01) > 0;
+          this.ctx.save();
+          this.ctx.fillStyle = 'rgba(0,0,0,0.35)';
+          this.ctx.beginPath();
+          this.ctx.ellipse(mine.x, mine.y + 3, mine.radius, mine.radius * 0.5, 0, 0, Math.PI * 2);
+          this.ctx.fill();
+          this.ctx.fillStyle = '#7f1d1d';
+          this.ctx.beginPath();
+          this.ctx.arc(mine.x, mine.y, mine.radius, 0, Math.PI * 2);
+          this.ctx.fill();
+          this.ctx.fillStyle = blink ? '#ef4444' : '#fca5a5';
+          this.ctx.shadowColor = '#ef4444';
+          this.ctx.shadowBlur = blink ? 10 : 0;
+          this.ctx.beginPath();
+          this.ctx.arc(mine.x, mine.y, 4, 0, Math.PI * 2);
+          this.ctx.fill();
+          this.ctx.restore();
         }
 
         // 3. Render Monsters
@@ -2173,6 +2706,42 @@
           this.ctx.shadowBlur = 10;
           this.ctx.beginPath();
           this.ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+          this.ctx.fill();
+          this.ctx.restore();
+        }
+
+        // 5.5 Render Homing Arrows
+        for (const arrow of this.arrows) {
+          this.ctx.save();
+          this.ctx.translate(arrow.x, arrow.y);
+          const angle = Math.atan2(arrow.vy, arrow.vx);
+          this.ctx.rotate(angle);
+          this.ctx.fillStyle = '#7dd3fc';
+          this.ctx.shadowColor = '#38bdf8';
+          this.ctx.shadowBlur = 10;
+          this.ctx.beginPath();
+          this.ctx.moveTo(11, 0);
+          this.ctx.lineTo(-7, -5);
+          this.ctx.lineTo(-7, 5);
+          this.ctx.closePath();
+          this.ctx.fill();
+          this.ctx.restore();
+        }
+
+        // 5.6 Render Boomerangs
+        for (const b of this.boomerangs) {
+          this.ctx.save();
+          this.ctx.translate(b.x, b.y);
+          this.ctx.rotate(b.rotation);
+          this.ctx.fillStyle = '#fcd34d';
+          this.ctx.shadowColor = '#f59e0b';
+          this.ctx.shadowBlur = 8;
+          this.ctx.beginPath();
+          this.ctx.moveTo(0, -9);
+          this.ctx.lineTo(3, 0);
+          this.ctx.lineTo(0, 9);
+          this.ctx.lineTo(-9, 3);
+          this.ctx.closePath();
           this.ctx.fill();
           this.ctx.restore();
         }
@@ -2427,6 +2996,71 @@
 
             this.ctx.fillStyle = '#ef4444';
             this.ctx.fillRect(m.x - bw / 2, m.y - m.radius - 10, bw * pct, bh);
+            this.ctx.restore();
+          }
+          return;
+        } else if (m.type === 'golem' && this.monster2ImageLoaded) {
+          // Animated Crab (Golem) from monster2.png
+          let frame;
+          const scale = 0.26;
+          let footY = 16;
+          let bobY = 0;
+          let wobbleX = 0;
+
+          if (m.hitTimer > 0) {
+            // Hit frame with cracked shell & "CRACK" comic effect
+            frame = this.monster2Config.hitFrame;
+            wobbleX = (Math.random() - 0.5) * 3;
+          } else {
+            // Scuttle walk cycle: 480ms (4 frames, 120ms each)
+            const cycle = (m.animTimer || 0) % 480;
+            const frameIdx = Math.floor(cycle / 120);
+            frame = this.monster2Config.moveFrames[frameIdx] || this.monster2Config.moveFrames[0];
+            // Subtle scuttle vertical step bob
+            if (frameIdx === 1 || frameIdx === 2) {
+              bobY = -2;
+            }
+          }
+
+          const dw = frame.w * scale;
+          const dh = frame.h * scale;
+
+          // Shadow
+          this.ctx.save();
+          this.ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+          this.ctx.beginPath();
+          this.ctx.ellipse(m.x, m.y + 16, 24, 9, 0, 0, Math.PI * 2);
+          this.ctx.fill();
+          this.ctx.restore();
+
+          // Monster Sprite
+          this.ctx.save();
+          this.ctx.translate(m.x + wobbleX, m.y + bobY);
+          if (m.facingLeft) {
+            this.ctx.scale(-1, 1);
+          }
+          if (m.hitTimer > 0) {
+            this.ctx.filter = 'brightness(1.25)';
+          }
+          this.ctx.drawImage(
+            this.monster2Image,
+            frame.x, frame.y, frame.w, frame.h,
+            -dw / 2, footY - dh, dw, dh
+          );
+          this.ctx.restore();
+
+          // Monster HP Bar (when damaged)
+          if (m.hp < m.maxHp) {
+            const bw = m.radius * 2;
+            const bh = 4;
+            const pct = Math.max(0, m.hp / m.maxHp);
+
+            this.ctx.save();
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            this.ctx.fillRect(m.x - bw / 2, m.y - m.radius - 12, bw, bh);
+
+            this.ctx.fillStyle = '#f97316';
+            this.ctx.fillRect(m.x - bw / 2, m.y - m.radius - 12, bw * pct, bh);
             this.ctx.restore();
           }
           return;
