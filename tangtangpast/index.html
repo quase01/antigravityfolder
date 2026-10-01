@@ -1050,6 +1050,7 @@
         desc: "주위를 회전하며 적을 벨 수 있는 에너지 구체 +1기",
         icon: "🔮",
         tier: "Defensive",
+        weight: 3,
         apply: (game) => { game.player.orbitersCount += 1; }
       },
       {
@@ -1289,6 +1290,70 @@
             { x: 1079, y: 795, w: 292, h: 206, dur: 450 }  // Defeated shell "x_x"
           ]
         };
+
+        // Monster3 (Bat) Sprite Sheet (from monster3.png)
+        this.monster3Image = new Image();
+        this.monster3ImageLoaded = false;
+        this.monster3Image.onload = () => {
+          this.monster3ImageLoaded = true;
+        };
+        this.monster3Image.src = 'monster3.png';
+
+        // Monster3 frames layout (4x2 grid: flap cycle, hit flash, death sequence)
+        this.monster3Config = {
+          moveFrames: [
+            { x: 0, y: 0, w: 480, h: 524 },
+            { x: 480, y: 0, w: 480, h: 524 },
+            { x: 960, y: 0, w: 480, h: 524 },
+            { x: 1440, y: 0, w: 480, h: 524 }
+          ],
+          hitFrame: { x: 0, y: 524, w: 480, h: 524 },
+          deathFrames: [
+            { x: 480, y: 524, w: 480, h: 524, dur: 140 },
+            { x: 960, y: 524, w: 480, h: 524, dur: 180 },
+            { x: 1440, y: 524, w: 480, h: 524, dur: 380 }
+          ]
+        };
+
+        // Monster4 (Boss Dragon) Sprite Sheet (from monster4.png)
+        this.monster4Image = new Image();
+        this.monster4ImageLoaded = false;
+        this.monster4Image.onload = () => {
+          this.monster4ImageLoaded = true;
+        };
+        this.monster4Image.src = 'monster4.png';
+
+        // Monster4 frames layout (4x2 grid: flight cycle, hit flash, death sequence)
+        this.monster4Config = {
+          moveFrames: [
+            { x: 0, y: 0, w: 466, h: 508 },
+            { x: 466, y: 0, w: 466, h: 508 },
+            { x: 932, y: 0, w: 466, h: 508 },
+            { x: 1398, y: 0, w: 466, h: 508 }
+          ],
+          hitFrame: { x: 0, y: 508, w: 466, h: 508 },
+          deathFrames: [
+            { x: 466, y: 508, w: 466, h: 508, dur: 160 },
+            { x: 932, y: 508, w: 466, h: 508, dur: 200 },
+            { x: 1398, y: 508, w: 466, h: 508, dur: 450 }
+          ]
+        };
+
+        // Boomerang Sprite (from boomerang.png)
+        this.boomerangImage = new Image();
+        this.boomerangImageLoaded = false;
+        this.boomerangImage.onload = () => {
+          this.boomerangImageLoaded = true;
+        };
+        this.boomerangImage.src = 'boomerang.png';
+
+        // Orbiter (Guardian Satellite) Sprite (from sate.png)
+        this.satelliteImage = new Image();
+        this.satelliteImageLoaded = false;
+        this.satelliteImage.onload = () => {
+          this.satelliteImageLoaded = true;
+        };
+        this.satelliteImage.src = 'sate.png';
 
         this.dyingMonsters = [];
 
@@ -1648,9 +1713,23 @@
         const container = document.getElementById('powerup-cards-container');
         container.innerHTML = '';
 
-        // Pick 3 random powerups
-        const shuffled = [...ALL_POWERUPS].sort(() => 0.5 - Math.random());
-        const chosen = shuffled.slice(0, 3);
+        // Pick 3 random powerups (weighted, without replacement)
+        const pool = [...ALL_POWERUPS];
+        const chosen = [];
+        for (let i = 0; i < 3 && pool.length > 0; i++) {
+          const totalWeight = pool.reduce((sum, p) => sum + (p.weight || 1), 0);
+          let r = Math.random() * totalWeight;
+          let pickIdx = 0;
+          for (let j = 0; j < pool.length; j++) {
+            r -= (pool[j].weight || 1);
+            if (r <= 0) {
+              pickIdx = j;
+              break;
+            }
+          }
+          chosen.push(pool[pickIdx]);
+          pool.splice(pickIdx, 1);
+        }
         this.activePowerupChoices = chosen;
 
         chosen.forEach((p, idx) => {
@@ -1969,7 +2048,7 @@
             m.y += (dy / dist) * m.speed;
           }
 
-          if (m.type === 'slime' || m.type === 'golem') {
+          if (m.type === 'slime' || m.type === 'golem' || m.type === 'bat' || m.type === 'boss') {
             m.animTimer = (m.animTimer || 0) + dt;
             m.facingLeft = (this.player.x < m.x);
             if (m.hitTimer > 0) {
@@ -2014,6 +2093,32 @@
             }
 
             if (dm.timer >= 810) {
+              this.dyingMonsters.splice(i, 1);
+            }
+          } else if (dm.type === 'boss') {
+            if (dm.timer < 200) {
+              dm.frame = 0; // Dragon reeling, smoke trailing
+            } else if (dm.timer < 450) {
+              dm.frame = 1; // Engulfed in smoke
+            } else {
+              dm.frame = 2; // Fully dissipated smoke cloud
+              dm.alpha = Math.max(0, 1 - (dm.timer - 450) / 500);
+            }
+
+            if (dm.timer >= 950) {
+              this.dyingMonsters.splice(i, 1);
+            }
+          } else if (dm.type === 'bat') {
+            if (dm.timer < 140) {
+              dm.frame = 0; // Dazed, falling
+            } else if (dm.timer < 320) {
+              dm.frame = 1; // Smoke puff explosion
+            } else {
+              dm.frame = 2; // Sparkles dissipating
+              dm.alpha = Math.max(0, 1 - (dm.timer - 320) / 380);
+            }
+
+            if (dm.timer >= 700) {
               this.dyingMonsters.splice(i, 1);
             }
           } else {
@@ -2097,9 +2202,9 @@
           const roll = Math.random();
           let type = 'slime';
 
-          if (this.gameTime > 5 && roll < 0.35) {
+          if (this.gameTime > 5 && roll < 0.5) {
             type = 'golem';
-          } else if (this.gameTime > 15 && roll < 0.5) {
+          } else if (this.gameTime > 15 && roll < 0.65) {
             type = 'bat';
           }
 
@@ -2187,7 +2292,7 @@
             vx: Math.cos(angle) * speed,
             vy: Math.sin(angle) * speed,
             radius: 6,
-            damage: 25 * this.player.damageMultiplier,
+            damage: 50 * this.player.damageMultiplier,
             pierce: this.player.pierceCount,
             hitTargets: new Set(),
             life: 1400 * this.player.rangeMultiplier,
@@ -2202,8 +2307,8 @@
       updateOrbiters(dt) {
         if (this.player.orbitersCount <= 0) return;
         const count = this.player.orbitersCount;
-        const orbRadius = 65;
-        const baseAngle = (performance.now() / 350) % (Math.PI * 2);
+        const orbRadius = 85;
+        const baseAngle = (performance.now() / 175) % (Math.PI * 2);
 
         for (let i = 0; i < count; i++) {
           const angle = baseAngle + (i * Math.PI * 2 / count);
@@ -2214,8 +2319,8 @@
           for (let j = 0; j < this.monsters.length; j++) {
             const m = this.monsters[j];
             const dist = Math.hypot(ox - m.x, oy - m.y);
-            if (dist < 14 + m.radius) {
-              this.damageMonster(m, 1.2 * this.player.damageMultiplier, false);
+            if (dist < 36 + m.radius) {
+              this.damageMonster(m, 2.4 * this.player.damageMultiplier, false);
               this.createImpactParticles(ox, oy, '#c084fc', 2);
             }
           }
@@ -2472,7 +2577,7 @@
         const finalDamage = isCrit ? damage * this.player.critMultiplier : damage;
         monster.hp -= finalDamage;
 
-        if (monster.type === 'slime' || monster.type === 'golem') {
+        if (monster.type === 'slime' || monster.type === 'golem' || monster.type === 'bat' || monster.type === 'boss') {
           monster.hitTimer = 130;
         }
 
@@ -2513,6 +2618,26 @@
           } else if (monster.type === 'golem' && this.monster2ImageLoaded) {
             this.dyingMonsters.push({
               type: 'golem',
+              x: monster.x,
+              y: monster.y,
+              timer: 0,
+              frame: 0,
+              alpha: 1.0,
+              facingLeft: monster.facingLeft
+            });
+          } else if (monster.type === 'bat' && this.monster3ImageLoaded) {
+            this.dyingMonsters.push({
+              type: 'bat',
+              x: monster.x,
+              y: monster.y,
+              timer: 0,
+              frame: 0,
+              alpha: 1.0,
+              facingLeft: monster.facingLeft
+            });
+          } else if (monster.type === 'boss' && this.monster4ImageLoaded) {
+            this.dyingMonsters.push({
+              type: 'boss',
               x: monster.x,
               y: monster.y,
               timer: 0,
@@ -2604,7 +2729,51 @@
 
         // 2.5 Render Dying Monsters (Puddles & Spirit Smoke from monster1.png / Crab defeat from monster2.png)
         for (const dm of this.dyingMonsters) {
-          if (dm.type === 'golem' && this.monster2ImageLoaded) {
+          if (dm.type === 'boss' && this.monster4ImageLoaded) {
+            const frameInfo = this.monster4Config.deathFrames[dm.frame] || this.monster4Config.deathFrames[0];
+            const scale = 0.22;
+            const dw = frameInfo.w * scale;
+            const dh = frameInfo.h * scale;
+            const footY = 20;
+
+            this.ctx.save();
+            this.ctx.globalAlpha = dm.alpha;
+            this.ctx.translate(dm.x, dm.y);
+            if (dm.facingLeft) {
+              this.ctx.scale(-1, 1);
+            }
+            let shudderX = 0;
+            if (dm.frame === 0) {
+              shudderX = (Math.random() - 0.5) * 5;
+            }
+            this.ctx.drawImage(this.monster4Image, frameInfo.x, frameInfo.y, frameInfo.w, frameInfo.h, -dw / 2 + shudderX, footY - dh, dw, dh);
+            this.ctx.restore();
+          } else if (dm.type === 'bat' && this.monster3ImageLoaded) {
+            const frameInfo = this.monster3Config.deathFrames[dm.frame] || this.monster3Config.deathFrames[0];
+            this.ctx.save();
+            this.ctx.globalAlpha = dm.alpha;
+            this.ctx.translate(dm.x, dm.y);
+            if (dm.facingLeft) {
+              this.ctx.scale(-1, 1);
+            }
+
+            let dw = 42;
+            let dh = 46;
+            let offsetY = -4;
+
+            if (dm.frame === 1) {
+              dw = 50;
+              dh = 50;
+              offsetY = -10;
+            } else if (dm.frame === 2) {
+              dw = 54;
+              dh = 30;
+              offsetY = 6;
+            }
+
+            this.ctx.drawImage(this.monster3Image, frameInfo.x, frameInfo.y, frameInfo.w, frameInfo.h, -dw / 2, -dh / 2 + offsetY, dw, dh);
+            this.ctx.restore();
+          } else if (dm.type === 'golem' && this.monster2ImageLoaded) {
             const frameInfo = this.monster2Config.deathFrames[dm.frame] || this.monster2Config.deathFrames[0];
             const scale = 0.26;
             const dw = frameInfo.w * scale;
@@ -2623,7 +2792,7 @@
             }
             this.ctx.drawImage(this.monster2Image, frameInfo.x, frameInfo.y, frameInfo.w, frameInfo.h, -dw / 2 + shudderX, footY - dh, dw, dh);
             this.ctx.restore();
-          } else if (this.monsterImageLoaded) {
+          } else if (dm.type === 'slime' && this.monsterImageLoaded) {
             const frameInfo = this.monster1Config.deathFrames[dm.frame] || this.monster1Config.deathFrames[0];
             this.ctx.save();
             this.ctx.globalAlpha = dm.alpha;
@@ -2696,8 +2865,8 @@
         // 4. Render Orbiters
         if (this.player.orbitersCount > 0) {
           const count = this.player.orbitersCount;
-          const orbRadius = 65;
-          const baseAngle = (performance.now() / 350) % (Math.PI * 2);
+          const orbRadius = 85;
+          const baseAngle = (performance.now() / 175) % (Math.PI * 2);
 
           for (let i = 0; i < count; i++) {
             const angle = baseAngle + (i * Math.PI * 2 / count);
@@ -2705,12 +2874,22 @@
             const oy = this.player.y + Math.sin(angle) * orbRadius;
 
             this.ctx.save();
-            this.ctx.fillStyle = '#c084fc';
-            this.ctx.shadowColor = '#a855f7';
-            this.ctx.shadowBlur = 12;
-            this.ctx.beginPath();
-            this.ctx.arc(ox, oy, 8, 0, Math.PI * 2);
-            this.ctx.fill();
+            if (this.satelliteImageLoaded) {
+              this.ctx.translate(ox, oy);
+              this.ctx.rotate(performance.now() * 0.008 + i);
+              this.ctx.shadowColor = '#22d3ee';
+              this.ctx.shadowBlur = 14;
+              const dw = 114;
+              const dh = 114 * (732 / 1342);
+              this.ctx.drawImage(this.satelliteImage, -dw / 2, -dh / 2, dw, dh);
+            } else {
+              this.ctx.fillStyle = '#c084fc';
+              this.ctx.shadowColor = '#a855f7';
+              this.ctx.shadowBlur = 12;
+              this.ctx.beginPath();
+              this.ctx.arc(ox, oy, 8, 0, Math.PI * 2);
+              this.ctx.fill();
+            }
             this.ctx.restore();
           }
         }
@@ -2750,16 +2929,25 @@
           this.ctx.save();
           this.ctx.translate(b.x, b.y);
           this.ctx.rotate(b.rotation);
-          this.ctx.fillStyle = '#fcd34d';
-          this.ctx.shadowColor = '#f59e0b';
-          this.ctx.shadowBlur = 8;
-          this.ctx.beginPath();
-          this.ctx.moveTo(0, -9);
-          this.ctx.lineTo(3, 0);
-          this.ctx.lineTo(0, 9);
-          this.ctx.lineTo(-9, 3);
-          this.ctx.closePath();
-          this.ctx.fill();
+
+          if (this.boomerangImageLoaded) {
+            this.ctx.shadowColor = '#f59e0b';
+            this.ctx.shadowBlur = 8;
+            const dw = 36;
+            const dh = 20;
+            this.ctx.drawImage(this.boomerangImage, -dw / 2, -dh / 2, dw, dh);
+          } else {
+            this.ctx.fillStyle = '#fcd34d';
+            this.ctx.shadowColor = '#f59e0b';
+            this.ctx.shadowBlur = 8;
+            this.ctx.beginPath();
+            this.ctx.moveTo(0, -9);
+            this.ctx.lineTo(3, 0);
+            this.ctx.lineTo(0, 9);
+            this.ctx.lineTo(-9, 3);
+            this.ctx.closePath();
+            this.ctx.fill();
+          }
           this.ctx.restore();
         }
 
@@ -3080,6 +3268,112 @@
             this.ctx.fillRect(m.x - bw / 2, m.y - m.radius - 12, bw * pct, bh);
             this.ctx.restore();
           }
+          return;
+        } else if (m.type === 'bat' && this.monster3ImageLoaded) {
+          // Animated Bat from monster3.png
+          let frame;
+          let dw = 44;
+          let dh = 48;
+          const bobY = Math.sin((m.animTimer || 0) * 0.012) * 3;
+
+          if (m.hitTimer > 0) {
+            frame = this.monster3Config.hitFrame;
+            dw = 50;
+            dh = 54;
+          } else {
+            // Wing flap cycle: 320ms (4 frames, 80ms each)
+            const cycle = (m.animTimer || 0) % 320;
+            const frameIdx = Math.floor(cycle / 80);
+            frame = this.monster3Config.moveFrames[frameIdx] || this.monster3Config.moveFrames[0];
+          }
+
+          // Shadow
+          this.ctx.save();
+          this.ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+          this.ctx.beginPath();
+          this.ctx.ellipse(m.x, m.y + 14, 12, 5, 0, 0, Math.PI * 2);
+          this.ctx.fill();
+          this.ctx.restore();
+
+          // Bat Sprite
+          this.ctx.save();
+          this.ctx.translate(m.x, m.y + bobY);
+          if (m.facingLeft) {
+            this.ctx.scale(-1, 1);
+          }
+          if (m.hitTimer > 0) {
+            this.ctx.filter = 'brightness(1.3)';
+          }
+          this.ctx.drawImage(this.monster3Image, frame.x, frame.y, frame.w, frame.h, -dw / 2, -dh / 2 - 2, dw, dh);
+          this.ctx.restore();
+
+          // Monster HP Bar (when damaged)
+          if (m.hp < m.maxHp) {
+            const bw = m.radius * 2;
+            const bh = 4;
+            const pct = Math.max(0, m.hp / m.maxHp);
+
+            this.ctx.save();
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            this.ctx.fillRect(m.x - bw / 2, m.y - m.radius - 10, bw, bh);
+
+            this.ctx.fillStyle = '#a855f7';
+            this.ctx.fillRect(m.x - bw / 2, m.y - m.radius - 10, bw * pct, bh);
+            this.ctx.restore();
+          }
+          return;
+        } else if (m.type === 'boss' && this.monster4ImageLoaded) {
+          // Animated Boss Dragon from monster4.png
+          let frame;
+          const scale = 0.22;
+          let wobbleX = 0;
+          const bobY = Math.sin((m.animTimer || 0) * 0.006) * 4;
+
+          if (m.hitTimer > 0) {
+            frame = this.monster4Config.hitFrame;
+            wobbleX = (Math.random() - 0.5) * 4;
+          } else {
+            // Flight cycle: 480ms (4 frames, 120ms each)
+            const cycle = (m.animTimer || 0) % 480;
+            const frameIdx = Math.floor(cycle / 120);
+            frame = this.monster4Config.moveFrames[frameIdx] || this.monster4Config.moveFrames[0];
+          }
+
+          const dw = frame.w * scale;
+          const dh = frame.h * scale;
+
+          // Shadow
+          this.ctx.save();
+          this.ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+          this.ctx.beginPath();
+          this.ctx.ellipse(m.x, m.y + m.radius * 0.7, m.radius, m.radius * 0.4, 0, 0, Math.PI * 2);
+          this.ctx.fill();
+          this.ctx.restore();
+
+          // Boss Sprite
+          this.ctx.save();
+          this.ctx.translate(m.x + wobbleX, m.y + bobY);
+          if (m.facingLeft) {
+            this.ctx.scale(-1, 1);
+          }
+          if (m.hitTimer > 0) {
+            this.ctx.filter = 'brightness(1.3)';
+          }
+          this.ctx.drawImage(this.monster4Image, frame.x, frame.y, frame.w, frame.h, -dw / 2, -dh / 2, dw, dh);
+          this.ctx.restore();
+
+          // Monster HP Bar (always shown for boss)
+          const bw = m.radius * 2;
+          const bh = 4;
+          const pct = Math.max(0, m.hp / m.maxHp);
+
+          this.ctx.save();
+          this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+          this.ctx.fillRect(m.x - bw / 2, m.y - m.radius - 14, bw, bh);
+
+          this.ctx.fillStyle = '#ef4444';
+          this.ctx.fillRect(m.x - bw / 2, m.y - m.radius - 14, bw * pct, bh);
+          this.ctx.restore();
           return;
         }
 
