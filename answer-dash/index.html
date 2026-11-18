@@ -120,7 +120,11 @@ input.txt{flex:1;min-width:0;font-family:inherit;font-size:19px;border:3px solid
   #board{display:none}
 }
 </style>
-<script>if (/[?&]mock=1/.test(location.search)) document.write('<script src="mock-room.js"><\/script>');</script>
+<script>
+/* claude.ai 안에서는 room 기능을, 밖(내 웹사이트)에서는 실시간 서버 연결 파일을 쓴다. ?mock=1 은 이 컴퓨터에서 탭끼리 시험할 때만. */
+if (/[?&]mock=1/.test(location.search)) document.write('<script src="mock-room.js"><\/script>');
+else if (!window.claude && location.protocol !== 'file:') document.write('<script src="room-ws.js"><\/script>');
+</script>
 
 <canvas id="c" tabindex="0" aria-label="게임 화면"></canvas>
 <div id="loading"><p>섬을 띄우는 중…</p></div>
@@ -200,6 +204,9 @@ const $$ = (s) => document.querySelectorAll(s);
 if (!window.THREE) { $('#loading p').textContent = '3D 엔진을 불러오지 못했어요. 인터넷 연결을 확인해 주세요.'; return; }
 const V3 = THREE.Vector3, TAU = Math.PI * 2;
 const ART_URL = 'https://claude.ai/artifact/1rtLFBq985QrPMddziXkSV';
+const ON_SITE = !!window.DashRoom;   /* claude.ai 밖, 내 웹사이트에서 연 경우 */
+const SHARE_BASE = ON_SITE ? location.origin + location.pathname : ART_URL;
+const SEND_IV = ON_SITE ? 1 / 6 : 1 / 12;   /* 서버 무료 한도를 아끼려고 웹사이트에서는 1초에 6번 */
 const DEBUG = /[?&](mock|debug)=1/.test(location.search);
 const rand = (a, b) => a + Math.random() * (b - a);
 const randi = (a, b) => Math.floor(rand(a, b + 1));
@@ -1219,12 +1226,12 @@ function netRead(dt) {
 }
 function netSend(dt) {
   if (!NET.gr) return;
-  NET.sendT -= dt; if (NET.sendT > 0) return; NET.sendT = 1 / 12;
+  NET.sendT -= dt; if (NET.sendT > 0) return; NET.sendT = SEND_IV;
   const meOn = ME.sim && ME.inScene;
   const pres = { s: meOn ? stateOf(ME) : null, rs: [GS.seed || 0, ME.right, r2(ME.ft || 0), r2(ME.et || 0)] };
   if (NET.host) pres.g = packGS();
   NET.gr.presence(pres).catch((e) => { if (DEBUG) console.warn('presence', e); });
-  NET.lobbyT -= 1 / 12;
+  NET.lobbyT -= SEND_IV;
   if (NET.host && NET.room && NET.lobbyT <= 0) {
     NET.lobbyT = 1;
     const open = GS.kind === 'pub' ? { c: NET.code, d: GS.diff, n: roomHumans().length, st: GS.st === 'lobby' ? 0 : 1 } : null;
@@ -1408,7 +1415,7 @@ function renderRoomCard(first) {
   setText('#rcCode', '방 번호 ' + NET.code);
   $('#rcQR').classList.toggle('hide', !(tch && NET.teacher));
   if (first && tch && NET.teacher) {
-    const url = ART_URL + '#room-' + NET.code;
+    const url = SHARE_BASE + '#room-' + NET.code;
     $('#rcBig').textContent = NET.code; $('#rcUrl').textContent = url;
     $('#rcHow').textContent = '휴대폰으로 QR을 찍거나, 이 페이지를 열고 [번호로]에 ' + NET.code + '을 넣어요.';
     let src = '';
@@ -1462,7 +1469,7 @@ $('#fillBtn').onclick = () => { if (NET.host) { GS.fill = !GS.fill; renderRoomCa
 $$('[data-rdiff]').forEach((b) => b.onclick = () => { SET.diff = +b.dataset.rdiff; GS.diff = SET.diff; saveSet(); renderRoomCard(); });
 $$('[data-rsubj]').forEach((b) => b.onclick = () => { SET.subj = b.dataset.rsubj; GS.subj = SET.subj; saveSet(); renderRoomCard(); });
 $('#copyBtn').onclick = () => {
-  const url = ART_URL + '#room-' + NET.code;
+  const url = SHARE_BASE + '#room-' + NET.code;
   const fallback = () => { const r = document.createRange(); r.selectNodeContents($('#rcUrl')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast('링크를 골라 두었어요 · 복사해 주세요', 2); };
   try { navigator.clipboard.writeText(url).then(() => toast('🔗 링크를 복사했어요', 1.6), fallback); } catch (e) { fallback(); }
 };
@@ -1588,14 +1595,18 @@ async function boot() {
   $('#loading').style.display = 'none';
   requestAnimationFrame((t) => { last = t; loop(t); });
   let room = null;
-  try { if (window.claude && typeof window.claude.use === 'function') room = await window.claude.use('room'); } catch (e) { room = null; }
+  try {
+    if (window.claude && typeof window.claude.use === 'function') room = await window.claude.use('room');
+    else if (window.DashRoom) room = await window.DashRoom.open();
+  } catch (e) { room = null; }
   NET.room = room;
   setNetAvailable(!!room);
-  $('#netNote').textContent = '같이 하기는 claude.ai에 로그인해서 이 페이지를 열었을 때만 돼요. 지금은 혼자 연습만 할 수 있어요.';
+  $('#netNote').textContent = ON_SITE ? '실시간 서버에 연결하지 못했어요. 새로 고침 해 보거나, 지금은 혼자 연습을 해요.'
+    : '같이 하기는 이 페이지를 공유받은 사람이 claude.ai에 로그인해서 열었을 때만 돼요. 공개 링크로 열면 혼자 연습만 할 수 있어요.';
   const hashJoin = () => {
     const m = /^#room-(\d{4,6})$/.exec(location.hash || '');
     if (!m || NET.code === m[1]) return;
-    if (room) enterRoom(m[1], 'join'); else toast('claude.ai에서 열어야 방에 들어갈 수 있어요', 3);
+    if (room) enterRoom(m[1], 'join'); else toast(ON_SITE ? '실시간 서버에 연결하지 못했어요' : '공유받은 계정으로 로그인해야 방에 들어갈 수 있어요', 3.5);
   };
   hashJoin(); addEventListener('hashchange', hashJoin);
   if (DEBUG) window.__dash = { G: G, get GS() { return GS; }, get MS() { return MS; }, get NET() { return NET; }, get PL() { return PL; }, get ME() { return ME; }, KEY: KEY, enterRoom: enterRoom, startSolo: startSolo, hostStartMatch: hostStartMatch,

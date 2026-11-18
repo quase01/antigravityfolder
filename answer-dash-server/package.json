@@ -1,0 +1,12 @@
+{
+  "name": "answer-dash-server",
+  "private": true,
+  "description": "정답 질주 섬 웹사이트와 실시간 방 서버 (Cloudflare Workers)",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

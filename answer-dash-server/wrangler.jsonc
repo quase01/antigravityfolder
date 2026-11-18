@@ -1,0 +1,17 @@
+{
+  // 정답 질주 섬: 게임 웹사이트(../answer-dash)와 실시간 방 서버를 한 주소로 올린다.
+  "name": "answer-dash",
+  "main": "src/index.js",
+  "compatibility_date": "2025-09-01",
+  "assets": {
+    "directory": "../answer-dash"
+  },
+  "durable_objects": {
+    "bindings": [{ "name": "ROOMS", "class_name": "Room" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Room"] }],
+  "vars": {
+    // 비워 두면 같은 주소에서 연 게임만 쓴다. 다른 사이트에서도 쓰려면 "https://a.com,https://b.com" 처럼 적는다.
+    "ALLOWED_ORIGINS": ""
+  }
+}
